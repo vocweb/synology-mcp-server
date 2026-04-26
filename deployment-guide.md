@@ -116,7 +116,7 @@ docker compose -f files/dockers/docker-compose.local.yml logs -f
 Run directly on your host with Node.js.
 
 ### 2.1 Requirements
-- Node.js `>= 24.0.0` (use [nvm](https://github.com/nvm-sh/nvm): `nvm install 24 && nvm use 24`)
+- Node.js `>= 22.0.0` (use [nvm](https://github.com/nvm-sh/nvm): `nvm install 22 && nvm use 22`)
 - pnpm `>= 9.0.0` (`corepack enable && corepack prepare pnpm@latest --activate`)
 - LAN reachability to the NAS
 
@@ -329,9 +329,9 @@ Run the Node binary directly on DSM. Smallest footprint, but you manage Node you
 ### 4.1 Requirements
 - DSM `7.2+`
 - SSH enabled (Control Panel → Terminal & SNMP → Enable SSH service)
-- **Node.js 24+** on the NAS — the easiest source is the [Synocommunity Node.js v24 SPK](https://synocommunity.com/) (or compile yourself; DSM's bundled Node is usually older). Verify with `node -v` over SSH.
+- **Node.js 22+** on the NAS — the easiest source is the [Synocommunity Node.js v22 SPK](https://synocommunity.com/) (or compile yourself; DSM's bundled Node is usually older). Verify with `node -v` over SSH.
 
-> Some DSM models (ARMv7, older Atom) have no Node 24 build available. On those, prefer **option 3** (Docker) instead.
+> Some DSM models (ARMv7, older Atom) have no Node 22 build available. On those, prefer **option 3** (Docker) instead.
 
 ### 4.2 Install
 

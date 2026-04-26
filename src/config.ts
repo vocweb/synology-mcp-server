@@ -8,8 +8,10 @@ import { z } from 'zod';
 import type { AppConfig } from './types/index.js';
 import { ValidationError } from './errors.js';
 
-// Load .env file into process.env (no-op if file absent; env vars already set win)
-dotenvConfig();
+// Load .env file into process.env (no-op if file absent; env vars already set win).
+// Tests set DOTENV_CONFIG_PATH=/dev/null to prevent the developer's local `.env`
+// from leaking into the test environment.
+dotenvConfig(process.env.DOTENV_CONFIG_PATH ? { path: process.env.DOTENV_CONFIG_PATH } : undefined);
 
 // ---------------------------------------------------------------------------
 // Zod schema

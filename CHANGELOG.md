@@ -8,10 +8,62 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
-### Planned (`0.3.0` — Drive module)
-- `DriveClient` wrapping `SYNO.Drive.Files`
-- 10 MCP Drive tools: `drive_list`, `drive_search`, `drive_get_metadata`, `drive_read_file`, `drive_write_file`, `drive_create_folder`, `drive_move`, `drive_copy`, `drive_delete`, `drive_share`
+---
+
+## [0.3.0] - 2026-04-26
+
+### Added — All modules milestone (Phases 02–08)
+
+#### Drive module (Phase 02)
+- `DriveClient` wrapping `SYNO.Drive.Files` and `SYNO.Drive.Labels` APIs
+- 11 MCP tools: `drive_list_files`, `drive_search_files`, `drive_get_file_info`, `drive_download_file`, `drive_upload_file`, `drive_create_folder`, `drive_move_file`, `drive_delete_file`, `drive_get_sharing_link`, `drive_list_labels`, `drive_add_label`
+- Confirm-required guard on `drive_delete_file` and `drive_move_file`
 - MSW-mocked unit tests + smoke tests gated by `SMOKE_TEST=1`
+
+#### Spreadsheet module (Phase 03)
+- `SpreadsheetClient` wrapping `SYNO.Office.Spreadsheet` APIs
+- 8 MCP tools: `spreadsheet_list`, `spreadsheet_get_info`, `spreadsheet_read_sheet`, `spreadsheet_write_cells`, `spreadsheet_append_rows`, `spreadsheet_add_sheet`, `spreadsheet_create`, `spreadsheet_export`
+- Confirm-required guard on `spreadsheet_write_cells` and `spreadsheet_append_rows`
+
+#### MailPlus module (Phase 04)
+- `MailPlusClient` wrapping `SYNO.MailPlus` APIs
+- 6 MCP tools: `mailplus_list_folders`, `mailplus_list_messages`, `mailplus_get_message`, `mailplus_send_message`, `mailplus_move_messages`, `mailplus_mark_messages`
+- Confirm-required guard on `mailplus_send_message` and `mailplus_move_messages`
+
+#### Calendar module (Phase 05)
+- `CalendarClient` wrapping `SYNO.Cal` APIs
+- 7 MCP tools: `calendar_list_calendars`, `calendar_list_events`, `calendar_get_event`, `calendar_create_calendar`, `calendar_create_event`, `calendar_update_event`, `calendar_delete_event`
+- Confirm-required guard on `calendar_create_event`, `calendar_update_event`, and `calendar_delete_event`
+
+#### MCP integration (Phase 06)
+- Full MCP server bootstrap with stdio and SSE transports
+- Tool registry wiring all 32 tools
+- Resources: Drive file tree (`drive://files`), MailPlus folder list (`mailplus://folders`), calendar list (`calendar://calendars`)
+- Prompts: `summarize_drive_folder`, `draft_email`, `weekly_agenda`
+- SSE: origin guard, bearer-auth middleware, loopback-enforcement at startup
+
+#### Hardening (Phase 07)
+- Retry with exponential backoff (max 3 attempts) on transient network errors and Synology codes 108/119
+- Structured JSON logging via `LOG_LEVEL` env var
+- Graceful shutdown: SIGINT/SIGTERM triggers best-effort Synology logout + SSE client drain
+- Request timeout enforcement via `AbortSignal.timeout()` and `SYNO_REQUEST_TIMEOUT_MS`
+
+#### Docs & release prep (Phase 08)
+- `docs/tool-reference.md` — full 32-tool reference table
+- `docs/deployment.md` — Docker, systemd, Synology scheduled task
+- `docs/troubleshooting.md` — Synology error codes + fixes
+- `docs/security.md` — detailed threat model
+- `examples/` — Claude Desktop config, Claude Code add script, GoClaw config, smoke-test script
+- `.github/workflows/release.yml` — tag-triggered npm publish with provenance
+
+### Changed
+- `src/index.ts` promoted from Phase 01 stub to full MCP server entry point
+- `package.json` version bumped to `0.3.0`; added `exports` field
+- README updated to reflect v0.3.0 milestone with all modules shipped
+
+### Notes
+- 311 unit tests passing; smoke tests against real DSM 7.2.2 pending before v1.0.0
+- v1.0.0 target: real-NAS smoke test validation, changelog-driven release cut
 
 ---
 
@@ -22,8 +74,8 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 #### Project hygiene
 - MIT-licensed open-source repository scaffold (`LICENSE`, `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`)
 - GitHub issue templates (bug report, feature request) under `.github/ISSUE_TEMPLATE/`
-- GitHub Actions CI workflow (`typecheck`, `lint`, `test`, `build` on Node 24)
-- pnpm workspace with strict `engines` requirement (Node `>=24.0.0`, pnpm `>=9.0.0`)
+- GitHub Actions CI workflow (`typecheck`, `lint`, `test`, `build` on Node 22)
+- pnpm workspace with strict `engines` requirement (Node `>=22.0.0`, pnpm `>=9.0.0`)
 - `tsup` build pipeline emitting ESM-only `dist/`
 - Husky + lint-staged pre-commit hooks (typecheck, ESLint, Prettier on staged files)
 - Prettier + ESLint flat config + `typescript-eslint` strict ruleset
@@ -83,6 +135,7 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ---
 
-[Unreleased]: https://github.com/vocweb/synology-mcp-server/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/vocweb/synology-mcp-server/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/vocweb/synology-mcp-server/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/vocweb/synology-mcp-server/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/vocweb/synology-mcp-server/releases/tag/v0.1.0
