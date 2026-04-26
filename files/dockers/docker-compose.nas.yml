@@ -1,0 +1,19 @@
+# NAS deployment via Container Manager (DSM 7.2+)
+# Place this file at: /volume1/docker/synology-office-mcp/docker-compose.yml
+# .env at:           /volume1/docker/synology-office-mcp/.env
+#
+# network_mode: host so 127.0.0.1 inside the container = DSM loopback,
+# letting the MCP server hit DSM APIs without LAN round-trips.
+
+services:
+  synology-mcp:
+    image: synology-office-mcp:0.2.0
+    container_name: synology-office-mcp
+    restart: unless-stopped
+    network_mode: host
+    env_file: /volume1/docker/synology-office-mcp/.env
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'

@@ -52,33 +52,10 @@ Run the MCP server in a container on your laptop / workstation. The container ta
 
 ### 1.2 Build the image
 
-A minimal `Dockerfile` (commit to your fork or copy locally):
-
-```dockerfile
-# Dockerfile
-FROM node:24-alpine AS build
-WORKDIR /app
-RUN corepack enable
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
-COPY tsconfig.json tsup.config.ts ./
-COPY src ./src
-RUN pnpm build && pnpm prune --prod
-
-FROM node:24-alpine
-WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY package.json ./
-USER node
-ENTRYPOINT ["node", "dist/index.js"]
-```
-
-Build:
+The repo ships a multi-stage [`files/dockers/Dockerfile`](./files/dockers/Dockerfile). Build from repo root:
 
 ```bash
-docker build -t synology-office-mcp:0.2.0 .
+docker build -t synology-office-mcp:0.2.0 -f files/dockers/Dockerfile .
 ```
 
 ### 1.3 Run — stdio (for Claude Desktop / Claude Code)
@@ -125,26 +102,11 @@ curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:3100/sse
 
 ### 1.5 docker-compose alternative
 
-```yaml
-# docker-compose.yml
-services:
-  synology-mcp:
-    image: synology-office-mcp:0.2.0
-    build: .
-    container_name: synology-mcp
-    restart: unless-stopped
-    env_file: .env
-    environment:
-      MCP_TRANSPORT: sse
-      MCP_SSE_HOST: 0.0.0.0
-      MCP_SSE_PORT: 3100
-    ports:
-      - "127.0.0.1:3100:3100"
-```
+Use the bundled [`files/dockers/docker-compose.local.yml`](./files/dockers/docker-compose.local.yml):
 
 ```bash
-docker compose up -d
-docker compose logs -f
+docker compose -f files/dockers/docker-compose.local.yml up -d
+docker compose -f files/dockers/docker-compose.local.yml logs -f
 ```
 
 ---
@@ -331,22 +293,7 @@ MCP_AUTH_TOKEN=...      # openssl rand -hex 32
 
 ### 3.4 Run via docker-compose (recommended)
 
-`/volume1/docker/synology-office-mcp/docker-compose.yml`:
-
-```yaml
-services:
-  synology-mcp:
-    image: synology-office-mcp:0.2.0
-    container_name: synology-office-mcp
-    restart: unless-stopped
-    network_mode: host           # so 127.0.0.1 inside container = DSM loopback
-    env_file: /volume1/docker/synology-office-mcp/.env
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "5"
-```
+Copy [`files/dockers/docker-compose.nas.yml`](./files/dockers/docker-compose.nas.yml) to `/volume1/docker/synology-office-mcp/docker-compose.yml` (host networking is preset so `127.0.0.1` inside the container maps to DSM loopback).
 
 In **Container Manager → Project → Create**, point at this folder. Or via SSH:
 
