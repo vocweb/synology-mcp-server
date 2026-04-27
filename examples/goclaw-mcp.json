@@ -1,0 +1,8 @@
+{
+  "name": "synology-office",
+  "type": "url",
+  "url": "http://localhost:3100/sse",
+  "headers": {
+    "Authorization": "Bearer YOUR_MCP_AUTH_TOKEN"
+  }
+}

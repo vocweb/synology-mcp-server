@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "synology-office": {
+      "command": "node",
+      "args": ["/absolute/path/to/synology-office-mcp/dist/index.js"],
+      "env": {
+        "SYNO_HOST": "192.168.1.100",
+        "SYNO_USERNAME": "your_user",
+        "SYNO_PASSWORD": "your_password",
+        "SYNO_HTTPS": "true",
+        "SYNO_IGNORE_CERT": "false",
+        "LOG_LEVEL": "info"
+      }
+    }
+  }
+}

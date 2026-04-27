@@ -10,39 +10,51 @@ export interface SynologyResponse<T> {
   error?: { code: number; errors?: unknown[] };
 }
 
-/** Synology Drive file or directory entry */
+/**
+ * Synology Drive file or directory entry returned by SYNO.SynologyDrive.Files
+ * on DSM 7.3.2. Field names differ significantly from legacy SYNO.Drive.Files.
+ */
 export interface SynoDriveFile {
-  /** Internal file/folder ID */
-  id: string;
-  /** Display name */
+  /** Internal file/folder ID (numeric string) */
+  file_id: string;
+  /** Display name (basename only) */
   name: string;
-  /** Virtual path in Drive */
+  /** Path relative to the user team folder root, e.g. "/Reports/Q1.xlsx" */
   path: string;
-  /** Filesystem path on NAS (when requested via additional) */
-  real_path?: string;
+  /** Full virtual path including team folder root, e.g. "/mydrive/Reports/Q1.xlsx" */
+  display_path: string;
+  /** Filesystem path on NAS (only on certain endpoints) */
+  dsm_path?: string;
   /** Whether this entry is a file or directory */
   type: 'file' | 'dir';
-  /** File size in bytes; absent for directories */
-  size?: number;
-  /** Optional extended metadata returned via additional[] param */
-  additional?: {
-    owner?: { user: string };
-    time?: { atime: number; ctime: number; crtime: number; mtime: number };
-    perm?: {
-      acl: { append: boolean; del: boolean; exec: boolean; read: boolean; write: boolean };
-      is_owner: boolean;
-    };
-  };
+  /** MIME-ish content category ("dir" for folders, e.g. "application/...") */
+  content_type?: string;
+  /** File size in bytes; 0 for directories */
+  size: number;
+  /** Last access time (Unix seconds) */
+  access_time?: number;
+  /** Last modification time (Unix seconds) */
+  modified_time?: number;
+  /** Creation time (Unix seconds) */
+  created_time?: number;
+  /** Owner descriptor; shape varies by endpoint */
+  owner?: { name?: string; uid?: number; nickname?: string };
+  /** Permanent share-link token */
+  permanent_link?: string;
+  /** Whether the file is currently shared */
+  shared?: boolean;
+  /** Capability map for the current user */
+  capabilities?: Record<string, boolean>;
+  /** Label IDs/names attached to the file */
+  labels?: Array<string | { label_id?: string; name?: string }>;
 }
 
-/** Synology Drive file list response */
+/** Synology Drive file list response (SYNO.SynologyDrive.Files list) */
 export interface SynoDriveListResponse {
-  /** Total number of matching items (for pagination) */
+  /** Total number of matching items */
   total: number;
-  /** Pagination offset applied */
-  offset: number;
-  /** Page of file entries */
-  files: SynoDriveFile[];
+  /** Page of file entries (DSM 7.3.2 returns "items", not "files") */
+  items: SynoDriveFile[];
 }
 
 /** Single sheet metadata within a Spreadsheet file */

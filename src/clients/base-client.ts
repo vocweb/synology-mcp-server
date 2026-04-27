@@ -5,11 +5,19 @@
  */
 
 import { Agent } from 'undici';
+import { httpFetch, type FetchResponse } from '../utils/http-fetch.js';
 import type { SynologyConfig } from '../types/index.js';
 import type { SynologyResponse } from '../types/synology-types.js';
 import type { AuthManager } from '../auth/auth-manager.js';
 import { mapSynologyError } from '../utils/synology-error-map.js';
-import { NetworkError, AuthError } from '../errors.js';
+import {
+  NetworkError,
+  AuthError,
+  ValidationError,
+  NotFoundError,
+  PermissionError,
+} from '../errors.js';
+import { withRetry } from '../utils/retry.js';
 
 /** Options for a single Synology API request */
 export interface RequestOptions {
@@ -37,8 +45,10 @@ export abstract class BaseClient {
   protected readonly authManager: AuthManager;
   /** e.g. "https://192.168.1.100:5001" */
   protected readonly baseUrl: string;
-  /** undici Agent for self-signed cert bypass; undefined when not needed */
-  private readonly dispatcher: Agent | undefined;
+  /** undici Agent for self-signed cert bypass; undefined when not needed.
+   * Protected so subclasses can pass it to direct `undici.fetch` calls
+   * (binary uploads/downloads that bypass `request<T>()`). */
+  protected readonly dispatcher: Agent | undefined;
   private readonly requestTimeoutMs: number;
 
   constructor(config: SynologyConfig, authManager: AuthManager) {
@@ -56,10 +66,14 @@ export abstract class BaseClient {
    * Performs a Synology API request, injects the session token, unwraps
    * the response envelope, and maps errors to typed exceptions.
    *
+   * Network-level and HTTP 5xx failures are automatically retried with
+   * exponential backoff (up to 3 times). Auth, validation, not-found, and
+   * permission errors are never retried.
+   *
    * @param options - Request parameters.
    * @returns Unwrapped `data` payload from the Synology response.
    * @throws {AuthError} On authentication failure.
-   * @throws {NetworkError} On transport-level failure.
+   * @throws {NetworkError} On transport-level failure after exhausting retries.
    * @throws {SynologyMcpError} On any Synology API error code.
    */
   protected async request<T>(options: RequestOptions): Promise<T> {
@@ -70,7 +84,9 @@ export abstract class BaseClient {
     // so the session id never lands in URL access logs / Referer headers.
     const url = this.buildUrl(endpoint, params);
 
-    const raw = await this.fetchWithTimeout(url, method, body, sid);
+    const raw = await withRetry(() => this.fetchWithTimeout(url, method, body, sid), {
+      isRetryable: isRetryableError,
+    });
 
     // Session-expired codes that warrant a single retry after re-login
     const sessionExpiredCodes = new Set([108, 119]);
@@ -123,15 +139,14 @@ export abstract class BaseClient {
   }
 
   /** Executes the HTTP request with AbortSignal timeout and error normalisation. */
-  private async fetchWithTimeout(
+  protected async fetchWithTimeout(
     url: string,
     method: 'GET' | 'POST',
     body: URLSearchParams | FormData | undefined,
     sid: string,
   ): Promise<SynologyResponse<unknown>> {
-    let response: Response;
+    let response: FetchResponse;
     try {
-      // `dispatcher` is a Node-only undici extension not in standard RequestInit.
       // `id=<sid>` is Synology's documented session cookie name (format=cookie).
       const init: Record<string, unknown> = {
         method,
@@ -139,8 +154,7 @@ export abstract class BaseClient {
         body: method === 'POST' ? body : undefined,
         signal: AbortSignal.timeout(this.requestTimeoutMs),
       };
-      if (this.dispatcher) init['dispatcher'] = this.dispatcher;
-      response = await fetch(url, init);
+      response = await httpFetch(url, init, this.dispatcher);
     } catch (err) {
       // AbortError signals a timeout; all others are network failures
       const msg = err instanceof Error ? err.message : String(err);
@@ -155,6 +169,11 @@ export abstract class BaseClient {
       throw new AuthError('HTTP 401 from Synology API', 401);
     }
 
+    // Treat HTTP 5xx as a retryable network-class failure (before parsing body)
+    if (response.status >= 500) {
+      throw new NetworkError(`Synology API HTTP ${response.status}`);
+    }
+
     let json: unknown;
     try {
       json = await response.json();
@@ -164,4 +183,27 @@ export abstract class BaseClient {
 
     return json as SynologyResponse<unknown>;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Module-level helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when the error is a transient failure safe to retry.
+ * Never retries: AuthError, ValidationError, NotFoundError, PermissionError.
+ */
+function isRetryableError(err: unknown): boolean {
+  if (
+    err instanceof AuthError ||
+    err instanceof ValidationError ||
+    err instanceof NotFoundError ||
+    err instanceof PermissionError
+  ) {
+    return false;
+  }
+  // NetworkError (retryable=true) and unknown errors are retried
+  if (err instanceof NetworkError) return true;
+  // Fallback: retry on unrecognised errors (e.g. unexpected throws from fetch)
+  return true;
 }

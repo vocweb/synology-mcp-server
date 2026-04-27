@@ -1,0 +1,23 @@
+# Local workstation deployment (SSE transport)
+# Usage:
+#   cp .env.example .env   # populate SYNO_* values
+#   docker compose -f files/dockers/docker-compose.local.yml up -d
+#
+# Binds SSE to 127.0.0.1 only. For LAN exposure, set MCP_AUTH_TOKEN
+# and change the published port to "0.0.0.0:3100:3100".
+
+services:
+  synology-mcp:
+    image: synology-office-mcp:0.2.0
+    build:
+      context: ../..
+      dockerfile: files/dockers/Dockerfile
+    container_name: synology-mcp
+    restart: unless-stopped
+    env_file: ../../.env
+    environment:
+      MCP_TRANSPORT: sse
+      MCP_SSE_HOST: 0.0.0.0
+      MCP_SSE_PORT: 3100
+    ports:
+      - '127.0.0.1:3100:3100'
