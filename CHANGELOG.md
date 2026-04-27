@@ -10,6 +10,35 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ---
 
+## [0.3.1] - 2026-04-27
+
+### Fixed — DSM 7.3.2 namespace and shape alignment
+
+DSM 7.3.2 returned error 102 ("API does not exist") for legacy namespaces. Renamed all client API references to the namespaces actually exposed by DSM 7.3.2 and adapted Drive request params + response shape accordingly.
+
+#### Namespace renames
+- Drive: `SYNO.Drive.Files` → `SYNO.SynologyDrive.Files`
+- Drive sharing: `SYNO.Drive.Sharing` → `SYNO.SynologyDrive.Sharing`
+- MailPlus: `SYNO.MailPlus.{Folder,Message,Compose,Attachment}` → `SYNO.MailClient.{Mailbox,Message,Draft,Attachment}`
+- Spreadsheet: `SYNO.Office.Spreadsheet` → `SYNO.Office.Sheet.Snapshot` (operations) + `SYNO.Office.Export` (export)
+- Calendar: `SYNO.Cal.*` (already correct, no change)
+
+#### Drive shape adaptation (DSM 7.3.2)
+- `list` / `search` use `path` parameter (not legacy `folder_path`); `search` uses `keyword` (not `query`)
+- Response wrapper: `{ total, items }` (not `{ total, offset, files }`)
+- Item fields: `file_id`, `display_path`, `modified_time`, `created_time`, `owner.name`, `capabilities` map → `perm.acl`
+- `get` drops obsolete `additional` JSON param — DSM 7.3.2 returns full metadata by default
+
+#### Verified
+- 311/311 unit tests passing
+- Live NAS smoke test on DSM `7.3.2-86009 update 3`: 6/6 read-only tools pass; `drive_list_files` returns real metadata end-to-end
+
+### Notes
+- Drive write operations (upload/move/delete/create_folder/sharing) have correct namespace but params/response shape not yet validated against live NAS — recommend smoke testing before relying on writes.
+- MailPlus and Office tools verified namespace-only on live NAS (test user lacked mail/Office package permissions for full payload validation).
+
+---
+
 ## [0.3.0] - 2026-04-26
 
 ### Added — All modules milestone (Phases 02–08)
@@ -135,7 +164,8 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ---
 
-[Unreleased]: https://github.com/vocweb/synology-mcp-server/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/vocweb/synology-mcp-server/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/vocweb/synology-mcp-server/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/vocweb/synology-mcp-server/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/vocweb/synology-mcp-server/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/vocweb/synology-mcp-server/releases/tag/v0.1.0
