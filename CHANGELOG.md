@@ -10,6 +10,10 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ---
 
+## [0.3.2] - 2026-04-27
+
+Move doc files.
+
 ## [0.3.1] - 2026-04-27
 
 ### Fixed — DSM 7.3.2 namespace and shape alignment
