@@ -9,6 +9,7 @@ import type { SynologyConfig } from '../types/index.js';
 import { TokenCache } from './token-cache.js';
 import { AuthError, NetworkError } from '../errors.js';
 import { mapSynologyError } from '../utils/synology-error-map.js';
+import { httpFetch, type FetchResponse } from '../utils/http-fetch.js';
 
 /** Shape of a successful SYNO.API.Auth login response data object */
 interface AuthLoginData {
@@ -92,8 +93,7 @@ export class AuthManager {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formBody,
       };
-      if (this.dispatcher) init['dispatcher'] = this.dispatcher;
-      await fetch(url, init);
+      await httpFetch(url, init, this.dispatcher);
     } catch {
       // Intentionally silenced — logout is best-effort on shutdown
     }
@@ -107,18 +107,16 @@ export class AuthManager {
   private async login(): Promise<string> {
     const { url, body: formBody } = this.buildLoginRequest();
 
-    let response: Response;
+    let response: FetchResponse;
     try {
       // POST credentials in form body so passwd never appears in URL/access logs.
-      // `dispatcher` is a Node/undici extension not in standard RequestInit.
       const init: Record<string, unknown> = {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formBody,
         signal: AbortSignal.timeout(this.config.requestTimeoutMs),
       };
-      if (this.dispatcher) init['dispatcher'] = this.dispatcher;
-      response = await fetch(url, init);
+      response = await httpFetch(url, init, this.dispatcher);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       throw new NetworkError(`Failed to reach Synology NAS: ${msg}`);

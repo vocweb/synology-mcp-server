@@ -6,6 +6,7 @@
  */
 
 import { BaseClient } from './base-client.js';
+import { httpFetch } from '../utils/http-fetch.js';
 import type { AuthManager } from '../auth/auth-manager.js';
 import type { SynologyConfig } from '../types/index.js';
 import type { SynoSpreadsheetInfo, SynoCellData } from '../types/synology-types.js';
@@ -199,9 +200,7 @@ export class SpreadsheetClient extends BaseClient {
     if (opts.sheet_name !== undefined) qs.set('sheet_name', opts.sheet_name);
 
     const url = `${this.baseUrl}${ENTRY}?${qs.toString()}`;
-    const response = await fetch(url, {
-      headers: { Cookie: `id=${sid}` },
-    });
+    const response = await httpFetch(url, { headers: { Cookie: `id=${sid}` } }, this.dispatcher);
 
     if (!response.ok) {
       throw new Error(`Export failed with HTTP ${response.status}`);

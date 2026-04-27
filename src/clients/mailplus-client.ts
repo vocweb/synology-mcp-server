@@ -8,6 +8,7 @@
 
 import FormData from 'form-data';
 import { BaseClient } from './base-client.js';
+import { httpFetch } from '../utils/http-fetch.js';
 import type { AuthManager } from '../auth/auth-manager.js';
 import type { SynologyConfig } from '../types/index.js';
 import type { SynoMailFolder, SynoMailMessage } from '../types/synology-types.js';
@@ -192,9 +193,7 @@ export class MailPlusClient extends BaseClient {
    *
    * @param opts - message_id and include_attachments flag.
    */
-  async getMessage(
-    opts: GetMessageOpts,
-  ): Promise<
+  async getMessage(opts: GetMessageOpts): Promise<
     SynoMailDetail & {
       attachments: Array<SynoMailAttachmentMeta & { content_base64: string | null }>;
     }
@@ -248,7 +247,7 @@ export class MailPlusClient extends BaseClient {
       message_id,
     });
     const url = `${this.baseUrl}${ENTRY}?${qs.toString()}`;
-    const response = await fetch(url, { headers: { Cookie: `id=${sid}` } });
+    const response = await httpFetch(url, { headers: { Cookie: `id=${sid}` } }, this.dispatcher);
 
     if (!response.ok) {
       throw new Error(`Attachment fetch failed with HTTP ${response.status}`);
@@ -297,14 +296,18 @@ export class MailPlusClient extends BaseClient {
     });
     const url = `${this.baseUrl}${ENTRY}?${qs.toString()}`;
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Cookie: `id=${sid}`,
-        ...form.getHeaders(),
+    const response = await httpFetch(
+      url,
+      {
+        method: 'POST',
+        headers: {
+          Cookie: `id=${sid}`,
+          ...form.getHeaders(),
+        },
+        body: form.getBuffer(),
       },
-      body: form.getBuffer(),
-    });
+      this.dispatcher,
+    );
 
     if (!response.ok) {
       throw new Error(`Send failed with HTTP ${response.status}`);

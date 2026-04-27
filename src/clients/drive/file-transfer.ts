@@ -8,6 +8,7 @@ import type { Agent } from 'undici';
 import { sanitizePath } from '../../utils/path-guard.js';
 import { NetworkError } from '../../errors.js';
 import { mapSynologyError } from '../../utils/synology-error-map.js';
+import { httpFetch, type FetchResponse } from '../../utils/http-fetch.js';
 import type { SynoDriveUploadResponse } from './raw-response-types.js';
 import type { DriveUploadResult, DriveDownloadResult } from './drive-types.js';
 
@@ -52,11 +53,10 @@ export async function upload(deps: TransferDeps, opts: UploadOpts): Promise<Driv
     body: form.getBuffer(),
     signal: AbortSignal.timeout(60_000),
   };
-  if (deps.dispatcher) init['dispatcher'] = deps.dispatcher;
 
-  let response: Response;
+  let response: FetchResponse;
   try {
-    response = await fetch(url, init);
+    response = await httpFetch(url, init, deps.dispatcher);
   } catch (err) {
     throw new NetworkError(`Upload failed: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -105,11 +105,10 @@ export async function download(deps: TransferDeps, filePath: string): Promise<Dr
     headers: { Cookie: `id=${sid}` },
     signal: AbortSignal.timeout(60_000),
   };
-  if (deps.dispatcher) init['dispatcher'] = deps.dispatcher;
 
-  let response: Response;
+  let response: FetchResponse;
   try {
-    response = await fetch(url, init);
+    response = await httpFetch(url, init, deps.dispatcher);
   } catch (err) {
     throw new NetworkError(`Download failed: ${err instanceof Error ? err.message : String(err)}`);
   }

@@ -5,6 +5,7 @@
  */
 
 import { Agent } from 'undici';
+import { httpFetch, type FetchResponse } from '../utils/http-fetch.js';
 import type { SynologyConfig } from '../types/index.js';
 import type { SynologyResponse } from '../types/synology-types.js';
 import type { AuthManager } from '../auth/auth-manager.js';
@@ -44,8 +45,10 @@ export abstract class BaseClient {
   protected readonly authManager: AuthManager;
   /** e.g. "https://192.168.1.100:5001" */
   protected readonly baseUrl: string;
-  /** undici Agent for self-signed cert bypass; undefined when not needed */
-  private readonly dispatcher: Agent | undefined;
+  /** undici Agent for self-signed cert bypass; undefined when not needed.
+   * Protected so subclasses can pass it to direct `undici.fetch` calls
+   * (binary uploads/downloads that bypass `request<T>()`). */
+  protected readonly dispatcher: Agent | undefined;
   private readonly requestTimeoutMs: number;
 
   constructor(config: SynologyConfig, authManager: AuthManager) {
@@ -142,9 +145,8 @@ export abstract class BaseClient {
     body: URLSearchParams | FormData | undefined,
     sid: string,
   ): Promise<SynologyResponse<unknown>> {
-    let response: Response;
+    let response: FetchResponse;
     try {
-      // `dispatcher` is a Node-only undici extension not in standard RequestInit.
       // `id=<sid>` is Synology's documented session cookie name (format=cookie).
       const init: Record<string, unknown> = {
         method,
@@ -152,8 +154,7 @@ export abstract class BaseClient {
         body: method === 'POST' ? body : undefined,
         signal: AbortSignal.timeout(this.requestTimeoutMs),
       };
-      if (this.dispatcher) init['dispatcher'] = this.dispatcher;
-      response = await fetch(url, init);
+      response = await httpFetch(url, init, this.dispatcher);
     } catch (err) {
       // AbortError signals a timeout; all others are network failures
       const msg = err instanceof Error ? err.message : String(err);
