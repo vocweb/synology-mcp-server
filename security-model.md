@@ -92,7 +92,7 @@ The following values are automatically redacted (replaced with `[REDACTED]`) bef
 - `Authorization` bearer token values
 - `MCP_AUTH_TOKEN` value
 
-Redaction is applied by `src/utils/redact.ts` and is called at every log site. If you find a log statement that leaks a sensitive value, please report it per the [vulnerability disclosure process](../SECURITY.md).
+Redaction is applied by `src/utils/redact.ts` and is called at every log site. If you find a log statement that leaks a sensitive value, please report it per the [vulnerability disclosure process](./SECURITY.md).
 
 ---
 
@@ -118,4 +118,4 @@ When `confirm` is absent or `false`, the tool returns an error without performin
 
 ## Vulnerability Disclosure
 
-See [SECURITY.md](../SECURITY.md) for the private disclosure process. Do not open public GitHub issues for security vulnerabilities.
+See [SECURITY.md](./SECURITY.md) for the private disclosure process. Do not open public GitHub issues for security vulnerabilities.

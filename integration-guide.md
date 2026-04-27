@@ -1,12 +1,12 @@
 # Integration Guide
 
-How to wire **synology-office-mcp** into MCP-aware AI agents and clients. This guide assumes the server is already deployed (see [`deployment-guide.md`](../deployment-guide.md)) and reachable via either:
+How to wire **synology-office-mcp** into MCP-aware AI agents and clients. This guide assumes the server is already deployed (see [`deployment-guide.md`](./deployment-guide.md)) and reachable via either:
 
 - **stdio transport** — the client spawns `node dist/index.js` (or `docker run … -i`) as a subprocess, default mode.
 - **SSE transport** — the server runs as a long-lived HTTP daemon at `http://<host>:3100/sse`, optionally fronted by HTTPS reverse proxy and protected by `MCP_AUTH_TOKEN`.
 
 > [!NOTE]
-> **Pre-1.0 status (`v0.2.0`).** Until `0.7.0` lands, the binary validates configuration and prints a startup banner. Tool serving over stdio + SSE wires up in Phase 06. Configure clients now; the wiring below continues to work after `0.7.0`.
+> Pre-1.0 status (`v0.3.x`). All 32 tools across Drive / Spreadsheet / MailPlus / Calendar are wired and unit-tested; smoke validation against a real DSM 7.2.2 NAS is pending before `1.0.0`.
 
 ---
 
@@ -103,14 +103,14 @@ Docker variant — useful if you don't want Node on the host:
       "args": [
         "run", "--rm", "-i",
         "--env-file", "${ENV_FILE}",
-        "synology-office-mcp:0.2.0"
+        "synology-office-mcp:0.3.3"
       ]
     }
   }
 }
 ```
 
-Restart Claude Desktop. The hammer icon should list Synology tools once `0.7.0` is shipped.
+Restart Claude Desktop. The hammer icon should list all 32 Synology tools.
 
 ---
 
@@ -369,7 +369,7 @@ Tool discovery flow is identical across SDKs:
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Client says "MCP server failed to start" | Wrong absolute path or missing build | `pnpm build` then re-check `command`/`args`. |
-| Tools list is empty | Pre-`0.7.0` banner-only stub | Wait for Phase 06 release, or test against `dev` branch once tools land. |
+| Tools list is empty | Server failed to register tools | Check stderr for config validation errors; verify `pnpm build` produced `dist/index.js`. |
 | `401 Unauthorized` on SSE | Missing/incorrect `MCP_AUTH_TOKEN` header | Verify the `Authorization: Bearer …` header reaches the server (DSM Reverse Proxy may strip it — add a custom header rule). |
 | Client connects but tool calls hang | NAS unreachable from server host | `curl -k https://${SYNO_HOST}:${SYNO_PORT}` from where the MCP server runs. |
 | Self-signed cert errors | NAS uses default DSM cert | `SYNO_IGNORE_CERT=true` (trusted networks only). |
@@ -379,7 +379,8 @@ Tool discovery flow is identical across SDKs:
 
 ## Related documentation
 
-- [`deployment-guide.md`](../deployment-guide.md) — install topologies (local / NAS, Docker / bare-metal).
-- [`docs/system-architecture.md`](./system-architecture.md) — components, transports, data flow.
-- [`SECURITY.md`](../SECURITY.md) — vulnerability disclosure & threat model.
-- [`README.md`](../README.md) — feature overview, supported Synology modules.
+- [`deployment-guide.md`](./deployment-guide.md) — install topologies (local / NAS, Docker / bare-metal).
+- [`security-model.md`](./security-model.md) — threat model, transport security, redaction.
+- [`SECURITY.md`](./SECURITY.md) — vulnerability disclosure.
+- [`troubleshooting.md`](./troubleshooting.md) — Synology error codes + fixes.
+- [`README.md`](./README.md) — feature overview, supported Synology modules.

@@ -58,6 +58,7 @@ GoogleService-Info.plist
 
 repomix-output.xml
 .serena/cache
+CLAUDE.md
 plans/**/*
 !plans/templates/*
 screenshots/*
