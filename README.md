@@ -145,7 +145,7 @@ All configuration is via environment variables, validated by [Zod](https://zod.d
 
 ## Tool Reference
 
-Full table of all 32 tools with input schemas: [`docs/tool-reference.md`](./docs/tool-reference.md).
+Full table of all 32 tools with input schemas: [`tool-reference.md`](./tool-reference.md).
 
 Quick summary by module:
 
@@ -217,7 +217,7 @@ node dist/index.js
 
 Clients connect to `http://<host>:3100/sse` with `Authorization: Bearer <token>`.
 
-> **Security:** The server refuses to start when SSE is bound to a non-loopback address without `MCP_AUTH_TOKEN`. See [`docs/security.md`](./docs/security.md).
+> **Security:** The server refuses to start when SSE is bound to a non-loopback address without `MCP_AUTH_TOKEN`. See [`security-model.md`](./security-model.md).
 
 ---
 
@@ -244,7 +244,7 @@ Clients connect to `http://<host>:3100/sse` with `Authorization: Bearer <token>`
 └─────────────────────────────────────────────────┘
 ```
 
-Full design: [`docs/system-architecture.md`](./docs/system-architecture.md) · spec: [`docs/project/synology-office-mcp-spec.md`](./docs/project/synology-office-mcp-spec.md).
+See [`integration-guide.md`](./integration-guide.md) for client wiring across MCP-compatible agents.
 
 ---
 
@@ -257,7 +257,7 @@ Full design: [`docs/system-architecture.md`](./docs/system-architecture.md) · s
 - **Path traversal is blocked** at tool boundary by `src/utils/path-guard.ts`.
 - **Destructive operations require `confirm: true`** in the tool input.
 
-Detailed threat model: [`docs/security.md`](./docs/security.md). Vulnerability disclosure: [SECURITY.md](./SECURITY.md).
+Detailed threat model: [`security-model.md`](./security-model.md). Vulnerability disclosure: [SECURITY.md](./SECURITY.md).
 
 ---
 
@@ -305,12 +305,11 @@ See [`examples/smoke-test.ts`](./examples/smoke-test.ts) for a standalone runnab
 
 | Document | Purpose |
 |---|---|
-| [docs/tool-reference.md](./docs/tool-reference.md) | All 32 tools: name, module, confirm-required, summary |
-| [docs/deployment.md](./docs/deployment.md) | Docker, systemd unit, Synology scheduled task |
-| [docs/troubleshooting.md](./docs/troubleshooting.md) | Common Synology error codes + fixes |
-| [docs/security.md](./docs/security.md) | Detailed threat model |
-| [docs/system-architecture.md](./docs/system-architecture.md) | Component diagram, data flow, lifecycle |
-| [docs/project/synology-office-mcp-spec.md](./docs/project/synology-office-mcp-spec.md) | Full implementation specification |
+| [tool-reference.md](./tool-reference.md) | All 32 tools: name, module, confirm-required, summary |
+| [deployment-guide.md](./deployment-guide.md) | Docker, systemd unit, Synology scheduled task |
+| [integration-guide.md](./integration-guide.md) | Client wiring (Claude, Cursor, Codex, LangChain, …) |
+| [troubleshooting.md](./troubleshooting.md) | Common Synology error codes + fixes |
+| [security-model.md](./security-model.md) | Detailed threat model |
 | [CHANGELOG.md](./CHANGELOG.md) | Versioned release notes |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Contributor workflow |
 | [SECURITY.md](./SECURITY.md) | Vulnerability disclosure |

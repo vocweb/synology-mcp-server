@@ -6,8 +6,8 @@ During the pre-1.0 phase only the latest minor version receives security fixes.
 
 | Version | Status | Security Fixes |
 |---|---|---|
-| `0.2.x` | ✅ Current | Yes |
-| `< 0.2.0` | ❌ Superseded | No — please upgrade |
+| `0.3.x` | ✅ Current | Yes |
+| `< 0.3.0` | ❌ Superseded | No — please upgrade |
 
 Once `1.0.0` ships, the previous minor will receive critical fixes for 90 days.
 
@@ -59,13 +59,7 @@ Out-of-scope:
 
 ## Security Posture
 
-The project is designed **secure-by-default**:
-
-- TLS verification is **on** unless `SYNO_IGNORE_CERT=true` is explicitly set
-- SSE binds to `127.0.0.1` unless explicitly changed; non-loopback bind requires `MCP_AUTH_TOKEN`
-- Credentials never appear in URLs (`POST` form body for login, `Cookie` header for sid)
-- All sensitive values pass through `redactSensitive()` before logging
-- Path traversal is blocked at the tool boundary
+For the full threat model, transport security details, redaction policy, and confirm-required operation list, see [`security-model.md`](./security-model.md).
 
 ## Recognition
 
