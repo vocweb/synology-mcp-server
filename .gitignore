@@ -61,8 +61,11 @@ repomix-output.xml
 plans/**/*
 !plans/templates/*
 screenshots/*
-docs
-docs/screenshots/*
+/.claude
+/.husky
+/.opencode
+/docs
+/docs/screenshots/*
 plans
 logs.txt
 test-ck
