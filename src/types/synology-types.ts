@@ -150,3 +150,101 @@ export interface SynoCalEvent {
   /** Optional attendee list */
   attendee?: Array<{ email: string; name: string; status: string }>;
 }
+
+// ============================================================================
+// Synology Spreadsheet API v3.7+ REST API Response Types
+// ============================================================================
+
+/** Sheet metadata from REST API v3.7+ */
+export interface SheetDataV2 {
+  /** Internal sheet ID */
+  sheetId: string;
+  /** Human-readable tab name */
+  name: string;
+  /** Number of rows with data */
+  rowCount: number;
+  /** Number of columns with data */
+  columnCount: number;
+  /** Whether the sheet is hidden */
+  isHidden: boolean;
+}
+
+/** Spreadsheet metadata response from REST API v3.7+ (GET /spreadsheets/{id}) */
+export interface SpreadsheetDataV2 {
+  /** Spreadsheet ID from REST API */
+  id: string;
+  /** Display name of the spreadsheet */
+  name: string;
+  /** Ordered list of sheets in the workbook */
+  sheets: SheetDataV2[];
+  /** Creation timestamp (Unix seconds) */
+  createdTime?: number;
+  /** Last modification timestamp (Unix seconds) */
+  modifiedTime?: number;
+}
+
+/** Cell values response from REST API v3.7+ (GET /spreadsheets/{id}/values/{range}) */
+export interface GetValueResponse {
+  /** Name of the sheet queried */
+  sheet: string;
+  /** A1-notation range actually returned */
+  range: string;
+  /** 2D grid of cell values; outer = rows, inner = columns */
+  values: Array<Array<string | number | boolean | null>>;
+}
+
+/** Append/set values response from REST API v3.7+ (PUT /spreadsheets/{id}/values/{range}/append) */
+export interface AppendResponse {
+  /** Number of rows updated */
+  updatedRows: number;
+  /** Number of columns updated */
+  updatedColumns: number;
+  /** Total cells updated */
+  updatedCells: number;
+}
+
+/** Add sheet response from REST API v3.7+ (POST /spreadsheets/{id}/sheet/add) */
+export interface AddSheetResponse {
+  /** ID of the newly created sheet */
+  sheetId: string;
+  /** Index position of the new sheet */
+  index: number;
+}
+
+/** Cell styles response from REST API v3.7+ (GET /spreadsheets/{id}/styles/{range}) */
+export interface GetStyleResponse {
+  /** Name of the sheet queried */
+  sheet: string;
+  /** A1-notation range queried */
+  range: string;
+  /** 2D grid of cell styles; outer = rows, inner = columns */
+  styles: Array<Array<CellStyle | null>>;
+}
+
+/** Individual cell style definition */
+export interface CellStyle {
+  /** Font name, e.g. "Arial", "Times New Roman" */
+  fontName?: string;
+  /** Font size in points */
+  fontSize?: number;
+  /** Font weight: normal (400), bold (700), etc. */
+  fontWeight?: number;
+  /** True if italic */
+  italic?: boolean;
+  /** True if underline */
+  underline?: boolean;
+  /** True if strikethrough */
+  strikethrough?: boolean;
+  /** Hex color code (e.g. "#FF0000" for red) */
+  fontColor?: string;
+  /** Background color hex code */
+  backgroundColor?: string;
+  /** Horizontal alignment: left, center, right, justify */
+  horizontalAlignment?: 'left' | 'center' | 'right' | 'justify';
+  /** Vertical alignment: top, middle, bottom */
+  verticalAlignment?: 'top' | 'middle' | 'bottom';
+  /** Number format code, e.g. "0.00", "@" for text */
+  numberFormat?: string;
+  /** Whether text wraps in cell */
+  wrapText?: boolean;
+}

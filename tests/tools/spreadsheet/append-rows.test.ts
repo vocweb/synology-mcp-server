@@ -30,9 +30,8 @@ describe('spreadsheet_append_rows', () => {
     expect(result['code']).toBe('CONFIRMATION_REQUIRED');
   });
 
-  it('appends rows and returns new_last_row', async () => {
+  it('appends rows and returns rows_appended', async () => {
     const ctx = createTestContext();
-    // Fixture returns 3 rows (header + 2 data); appending 2 rows → new_last_row = 5
     const result = (await spreadsheetAppendRowsTool.handler(
       {
         file_id: 'sheet-001',
@@ -48,7 +47,6 @@ describe('spreadsheet_append_rows', () => {
 
     expect(result['success']).toBe(true);
     expect(result['rows_appended']).toBe(2);
-    expect(result['new_last_row']).toBe(5); // 3 existing + 2 appended
   });
 
   it('returns error response on API failure', async () => {

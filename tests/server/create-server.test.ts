@@ -41,8 +41,8 @@ describe('createServer — ListTools', () => {
     const tools = aggregateTools(ALL_FEATURES);
     expect(tools.length).toBeGreaterThan(0);
 
-    // 11 drive + 8 spreadsheet + 6 mailplus + 7 calendar = 32
-    expect(tools.length).toBe(32);
+    // 11 drive + 12 spreadsheet + 6 mailplus + 7 calendar = 36
+    expect(tools.length).toBe(36);
   });
 
   it('includes only drive tools when only drive enabled', () => {

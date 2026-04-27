@@ -60,6 +60,10 @@ const AppConfigSchema = z.object({
   SYNO_TOKEN_TTL_MS: envInt(82_800_000), // 23 hours
   SYNO_REQUEST_TIMEOUT_MS: envInt(30_000),
 
+  // Synology Spreadsheet API (v3.7+ REST API, separate Docker container)
+  SYNO_SPREADSHEET_PORT: envInt(3000),
+  SYNO_SPREADSHEET_HTTPS: envBool(false),
+
   // Feature flags
   SYNO_ENABLE_DRIVE: envBool(true),
   SYNO_ENABLE_SPREADSHEET: envBool(true),
@@ -148,6 +152,8 @@ export function loadConfig(): AppConfig {
       ...(env.SYNO_OTP_CODE ? { otpCode: env.SYNO_OTP_CODE } : {}),
       tokenTtlMs: env.SYNO_TOKEN_TTL_MS,
       requestTimeoutMs: env.SYNO_REQUEST_TIMEOUT_MS,
+      spreadsheetPort: env.SYNO_SPREADSHEET_PORT,
+      spreadsheetHttps: env.SYNO_SPREADSHEET_HTTPS,
     },
     mcp: {
       transport: env.MCP_TRANSPORT,

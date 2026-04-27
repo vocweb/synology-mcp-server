@@ -6,6 +6,7 @@
 
 import { loadConfig } from './config.js';
 import { AuthManager } from './auth/auth-manager.js';
+import { SpreadsheetAuthManager } from './auth/spreadsheet-auth-manager.js';
 import { DriveClient } from './clients/drive-client.js';
 import { SpreadsheetClient } from './clients/spreadsheet-client.js';
 import { MailPlusClient } from './clients/mailplus-client.js';
@@ -80,10 +81,11 @@ async function main(): Promise<void> {
     `synology-office-mcp starting — transport: ${transportInfo}${authInfo}, NAS: ${config.synology.host}:${config.synology.port}\n`,
   );
 
-  // Build auth manager and clients
+  // Build auth managers and clients
   const authManager = new AuthManager(config.synology);
+  const spreadsheetAuthManager = new SpreadsheetAuthManager(config.synology);
   const driveClient = new DriveClient(config.synology, authManager);
-  const spreadsheetClient = new SpreadsheetClient(config.synology, authManager);
+  const spreadsheetClient = new SpreadsheetClient(config.synology, spreadsheetAuthManager);
   const mailplusClient = new MailPlusClient(config.synology, authManager);
   const calendarClient = new CalendarClient(config.synology, authManager);
 
