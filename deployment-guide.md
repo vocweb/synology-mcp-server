@@ -9,8 +9,8 @@ This guide covers four deployment topologies for **synology-office-mcp**. Pick t
 | [3](#3-on-nas--with-docker) | NAS (Container Manager) | ✅ Yes | Production self-hosting, no DSM Node install |
 | [4](#4-on-nas--without-docker) | NAS (Task Scheduler / SSH) | ❌ No | Minimal footprint, direct loopback to DSM APIs |
 
-> [!WARNING]
-> **Pre-1.0 status (`v0.2.0`).** Until `0.7.0` lands, `node dist/index.js` validates configuration and prints a startup banner — full MCP tool serving (stdio + SSE) is wired in Phase 06. Use this guide to lock in your topology now; once `0.7.0` ships, the same `.env` and command lines continue to work.
+> [!NOTE]
+> Pre-1.0 status (`v0.3.x`). All four modules (Drive, Spreadsheet, MailPlus, Calendar) and both transports (stdio + SSE) are wired. Smoke validation against a real DSM 7.2.2 NAS is pending before `1.0.0`.
 
 ---
 
@@ -55,7 +55,7 @@ Run the MCP server in a container on your laptop / workstation. The container ta
 The repo ships a multi-stage [`files/dockers/Dockerfile`](./files/dockers/Dockerfile). Build from repo root:
 
 ```bash
-docker build -t synology-office-mcp:0.2.0 -f files/dockers/Dockerfile .
+docker build -t synology-office-mcp:0.3.3 -f files/dockers/Dockerfile .
 ```
 
 ### 1.3 Run — stdio (for Claude Desktop / Claude Code)
@@ -71,7 +71,7 @@ stdio mode requires the client to spawn the process directly. Wire Docker as the
       "args": [
         "run", "--rm", "-i",
         "--env-file", "/absolute/path/to/.env",
-        "synology-office-mcp:0.2.0"
+        "synology-office-mcp:0.3.3"
       ]
     }
   }
@@ -90,7 +90,7 @@ docker run -d \
   -e MCP_SSE_PORT=3100 \
   -e MCP_AUTH_TOKEN="$(openssl rand -hex 32)" \
   -p 127.0.0.1:3100:3100 \
-  synology-office-mcp:0.2.0
+  synology-office-mcp:0.3.3
 ```
 
 Verify:
@@ -253,15 +253,15 @@ Run the MCP server inside **Container Manager** (formerly Docker) on the NAS its
 **Option A — build locally, save, transfer:**
 
 ```bash
-docker build -t synology-office-mcp:0.2.0 .
-docker save synology-office-mcp:0.2.0 | gzip > synology-office-mcp-0.2.0.tar.gz
-scp synology-office-mcp-0.2.0.tar.gz admin@nas:/volume1/docker/
+docker build -t synology-office-mcp:0.3.3 .
+docker save synology-office-mcp:0.3.3 | gzip > synology-office-mcp-0.3.3.tar.gz
+scp synology-office-mcp-0.3.3.tar.gz admin@nas:/volume1/docker/
 ```
 
 Then on the NAS (SSH or Container Manager → Image → Add → From file):
 
 ```bash
-gunzip -c /volume1/docker/synology-office-mcp-0.2.0.tar.gz | sudo docker load
+gunzip -c /volume1/docker/synology-office-mcp-0.3.3.tar.gz | sudo docker load
 ```
 
 **Option B — build on NAS via SSH** (requires Node toolchain in the build stage; multi-stage `Dockerfile` above handles it):
@@ -269,7 +269,7 @@ gunzip -c /volume1/docker/synology-office-mcp-0.2.0.tar.gz | sudo docker load
 ```bash
 ssh admin@nas
 cd /volume1/docker/synology-office-mcp
-sudo docker build -t synology-office-mcp:0.2.0 .
+sudo docker build -t synology-office-mcp:0.3.3 .
 ```
 
 ### 3.3 Create `.env` on the NAS
@@ -403,7 +403,7 @@ Same DSM Reverse Proxy setup as **§3.5** — point `localhost:3100` at `https:/
 | Process is up | `ps aux \| grep synology-office-mcp` (or `docker ps`) | One running instance |
 | Config validated | first stderr line | `synology-office-mcp starting...` followed by `Config loaded — transport: …` |
 | NAS reachable | `curl -k https://$SYNO_HOST:$SYNO_PORT/webapi/query.cgi?api=SYNO.API.Info&version=1&method=query` | JSON response |
-| SSE auth (if enabled) | `curl -i -H "Authorization: Bearer $TOKEN" http://127.0.0.1:3100/sse` | `200 OK`, `text/event-stream` (after `0.7.0`) |
+| SSE auth (if enabled) | `curl -i -H "Authorization: Bearer $TOKEN" http://127.0.0.1:3100/sse` | `200 OK`, `text/event-stream` |
 | Logs are clean of secrets | `grep -E "passwd|_sid|otp_code" *.log` | no matches |
 
 If startup aborts with `Configuration validation failed:`, fix the listed env vars and restart. If you see `MCP_AUTH_TOKEN is required`, you bound SSE to a non-loopback host without setting a shared secret.
@@ -439,14 +439,15 @@ Always read [`CHANGELOG.md`](./CHANGELOG.md) before upgrading across a minor ver
 | TLS / cert errors | Self-signed NAS cert | `SYNO_IGNORE_CERT=true` (trusted networks only) |
 | `MCP_AUTH_TOKEN is required` | SSE bound to non-loopback without token | Set `MCP_AUTH_TOKEN` or bind to `127.0.0.1` |
 | Container can't reach `127.0.0.1` on NAS | Bridge network instead of host | Use `network_mode: host` (see §3.4) |
-| stdio client says "server exited" | Banner-only stub (pre-`0.7.0`) | Expected until Phase 06 ships |
+| stdio client says "server exited" | Config validation failed at startup | Check stderr for `Configuration validation failed:` and fix the listed env var |
 
 ---
 
 ## Related documentation
 
 - [README](./README.md) — feature overview, roadmap
-- [`docs/system-architecture.md`](./docs/system-architecture.md) — components and data flow
-- [`docs/project/synology-office-mcp-spec.md`](./docs/project/synology-office-mcp-spec.md) — full implementation spec
-- [`SECURITY.md`](./SECURITY.md) — vulnerability disclosure & security posture
+- [`integration-guide.md`](./integration-guide.md) — wiring MCP clients (Claude, Cursor, Codex, LangChain, …)
+- [`troubleshooting.md`](./troubleshooting.md) — Synology error codes + fixes
+- [`security-model.md`](./security-model.md) — threat model
+- [`SECURITY.md`](./SECURITY.md) — vulnerability disclosure
 - [`CHANGELOG.md`](./CHANGELOG.md) — what shipped, what's next

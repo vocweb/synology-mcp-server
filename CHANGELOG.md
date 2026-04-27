@@ -10,6 +10,17 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ---
 
+## [0.3.3] - 2026-04-27
+
+### Changed — Documentation restructure
+- Removed `AGENTS.md` (OpenCode no longer used) and `files/dockers/README.md` (duplicated `deployment-guide.md`)
+- Moved `files/docs/{security,troubleshooting,tool-reference,integration-guide}.md` to repo root
+- Removed `files/docs/deployment.md` (subset of `deployment-guide.md`)
+- Split `SECURITY.md` (disclosure-only) from new `security-model.md` (threat model, transport security, redaction)
+- Updated all cross-links and bumped stale version refs (`0.2.0`/`0.7.0`) across docs
+
+---
+
 ## [0.3.2] - 2026-04-27
 
 Move doc files.
@@ -168,7 +179,9 @@ DSM 7.3.2 returned error 102 ("API does not exist") for legacy namespaces. Renam
 
 ---
 
-[Unreleased]: https://github.com/vocweb/synology-mcp-server/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/vocweb/synology-mcp-server/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/vocweb/synology-mcp-server/compare/v0.3.2...v0.3.3
+[0.3.2]: https://github.com/vocweb/synology-mcp-server/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/vocweb/synology-mcp-server/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/vocweb/synology-mcp-server/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/vocweb/synology-mcp-server/compare/v0.1.0...v0.2.0
