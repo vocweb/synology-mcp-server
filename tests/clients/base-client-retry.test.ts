@@ -32,27 +32,23 @@ describe('BaseClient retry on 5xx', () => {
           success: true,
           data: {
             total: 1,
-            offset: 0,
-            files: [
+            items: [
               {
-                id: 'file-001',
+                file_id: 'file-001',
                 name: 'report.osheet',
-                path: '/mydrive/report.osheet',
-                real_path: '/volume1/homes/admin/Drive/report.osheet',
+                path: '/report.osheet',
+                display_path: '/mydrive/report.osheet',
+                dsm_path: '/volume1/homes/admin/Drive/report.osheet',
                 type: 'file',
                 size: 2048,
-                additional: {
-                  owner: { user: 'admin' },
-                  time: {
-                    atime: 1700000000,
-                    ctime: 1700000000,
-                    crtime: 1699000000,
-                    mtime: 1700000000,
-                  },
-                  perm: {
-                    acl: { append: true, del: true, exec: false, read: true, write: true },
-                    is_owner: true,
-                  },
+                modified_time: 1700000000,
+                created_time: 1699000000,
+                owner: { name: 'admin' },
+                capabilities: {
+                  can_read: true,
+                  can_write: true,
+                  can_delete: true,
+                  can_organize: true,
                 },
               },
             ],

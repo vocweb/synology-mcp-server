@@ -4,7 +4,7 @@
  * of the DriveClient and its operation modules.
  */
 
-/** Raw label entry from SYNO.Drive.Files list_labels */
+/** Raw label entry from SYNO.SynologyDrive.Files list_labels */
 export interface SynoDriveLabel {
   id: string;
   name: string;

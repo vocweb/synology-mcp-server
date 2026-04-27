@@ -32,36 +32,38 @@ export interface SearchOpts {
   extension?: string | undefined;
 }
 
-/** List files and folders under a Drive path. */
+/** List files and folders under a Drive path (SYNO.SynologyDrive.Files list, DSM 7.3.2). */
 export async function listFiles(request: RequestFn, opts: ListFilesOpts): Promise<DriveFileList> {
+  // DSM 7.3.2 SYNO.SynologyDrive.Files list expects `path` (not legacy `folder_path`)
+  // and returns { total, items } (not { total, offset, files }).
   const params: Record<string, string | number | boolean> = {
-    api: 'SYNO.Drive.Files',
+    api: 'SYNO.SynologyDrive.Files',
     version: 2,
     method: 'list',
-    folder_path: sanitizePath(opts.folder_path),
-    limit: opts.limit,
+    path: sanitizePath(opts.folder_path),
     offset: opts.offset,
+    limit: opts.limit,
     sort_by: opts.sort_by,
     sort_direction: opts.sort_direction,
-    file_type: opts.file_type,
-    additional: JSON.stringify(['real_path', 'size', 'owner', 'time', 'perm']),
   };
+  // Optional file_type filter ("file" | "dir"); omitted when "all"
+  if (opts.file_type !== 'all') params['filter'] = JSON.stringify({ type: opts.file_type });
   if (opts.pattern !== undefined) params['pattern'] = opts.pattern;
 
   const raw = await request<SynoDriveListResponse>({ endpoint: '/webapi/entry.cgi', params });
-  return { total: raw.total, offset: raw.offset, files: raw.files.map(normalizeFile) };
+  return { total: raw.total, offset: opts.offset, files: raw.items.map(normalizeFile) };
 }
 
 /** Get detailed metadata for a single file or folder. */
 export async function getFileInfo(request: RequestFn, filePath: string): Promise<DriveFileInfo> {
+  // DSM 7.3.2 returns full metadata by default; no `additional` param required.
   const raw = await request<SynoDriveFile>({
     endpoint: '/webapi/entry.cgi',
     params: {
-      api: 'SYNO.Drive.Files',
+      api: 'SYNO.SynologyDrive.Files',
       version: 2,
       method: 'get',
       path: sanitizePath(filePath),
-      additional: JSON.stringify(['real_path', 'size', 'owner', 'time', 'perm', 'label']),
     },
   });
   return normalizeFileInfo(raw);
@@ -69,18 +71,20 @@ export async function getFileInfo(request: RequestFn, filePath: string): Promise
 
 /** Search for files by keyword. Output shape matches listFiles. */
 export async function search(request: RequestFn, opts: SearchOpts): Promise<DriveFileList> {
+  // DSM 7.3.2 SYNO.SynologyDrive.Files search uses `path` (not `folder_path`)
+  // and returns { total, items }.
   const params: Record<string, string | number | boolean> = {
-    api: 'SYNO.Drive.Files',
+    api: 'SYNO.SynologyDrive.Files',
     version: 2,
     method: 'search',
-    query: opts.query,
-    folder_path: sanitizePath(opts.folder_path),
+    keyword: opts.query,
+    path: sanitizePath(opts.folder_path),
     limit: opts.limit,
   };
   if (opts.extension !== undefined) params['extension'] = opts.extension;
 
   const raw = await request<SynoDriveListResponse>({ endpoint: '/webapi/entry.cgi', params });
-  return { total: raw.total, offset: raw.offset, files: raw.files.map(normalizeFile) };
+  return { total: raw.total, offset: 0, files: raw.items.map(normalizeFile) };
 }
 
 export type { DriveFile, DriveFileInfo, DriveFileList };

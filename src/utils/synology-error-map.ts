@@ -100,7 +100,7 @@ const ERROR_MAP: Record<number, ErrorMapEntry> = {
  * Falls back to a generic `SynologyMcpError` for unmapped codes.
  *
  * @param code - Synology numeric error code from response envelope.
- * @param api  - API name for context in fallback message, e.g. "SYNO.Drive.Files".
+ * @param api  - API name for context in fallback message, e.g. "SYNO.SynologyDrive.Files".
  * @returns Typed error instance ready to throw.
  */
 export function mapSynologyError(code: number, api: string): SynologyMcpError {

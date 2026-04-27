@@ -52,7 +52,7 @@ export async function createFolder(
     endpoint: '/webapi/entry.cgi',
     method: 'POST',
     params: {
-      api: 'SYNO.Drive.Files',
+      api: 'SYNO.SynologyDrive.Files',
       version: 2,
       method: 'create_folder',
       folder_path: sanitizePath(opts.folder_path),
@@ -66,7 +66,7 @@ export async function createFolder(
 /** Move or rename a file/folder. */
 export async function move(request: RequestFn, opts: MoveOpts): Promise<DriveMoveResult> {
   const params: Record<string, string | number | boolean> = {
-    api: 'SYNO.Drive.Files',
+    api: 'SYNO.SynologyDrive.Files',
     version: 2,
     method: 'move',
     path: sanitizePath(opts.path),
@@ -92,7 +92,7 @@ export async function deleteFile(
     endpoint: '/webapi/entry.cgi',
     method: 'POST',
     params: {
-      api: 'SYNO.Drive.Files',
+      api: 'SYNO.SynologyDrive.Files',
       version: 2,
       method: 'delete',
       path: sanitizePath(opts.path),
@@ -106,7 +106,7 @@ export async function deleteFile(
 export async function listLabels(request: RequestFn): Promise<DriveLabel[]> {
   const raw = await request<SynoDriveLabelListResponse>({
     endpoint: '/webapi/entry.cgi',
-    params: { api: 'SYNO.Drive.Files', version: 2, method: 'list_labels' },
+    params: { api: 'SYNO.SynologyDrive.Files', version: 2, method: 'list_labels' },
   });
   return raw.labels;
 }
@@ -120,7 +120,7 @@ export async function addLabel(
     endpoint: '/webapi/entry.cgi',
     method: 'POST',
     params: {
-      api: 'SYNO.Drive.Files',
+      api: 'SYNO.SynologyDrive.Files',
       version: 2,
       method: 'add_label',
       path: sanitizePath(opts.path),
@@ -136,7 +136,7 @@ export async function getSharingLink(
   opts: SharingLinkOpts,
 ): Promise<DriveSharingLinkResult> {
   const params: Record<string, string | number | boolean> = {
-    api: 'SYNO.Drive.Sharing',
+    api: 'SYNO.SynologyDrive.Sharing',
     version: 2,
     method: 'create',
     path: sanitizePath(opts.path),

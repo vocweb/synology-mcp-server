@@ -47,7 +47,7 @@ export type {
 } from './drive/folder-label-sharing-operations.js';
 
 /**
- * Wraps all SYNO.Drive.Files v2 and SYNO.Drive.Sharing v2 operations.
+ * Wraps all SYNO.SynologyDrive.Files v2 and SYNO.SynologyDrive.Sharing v2 operations.
  * Binary transfers (upload/download) bypass `request<T>()` and use direct fetch.
  */
 export class DriveClient extends BaseClient {

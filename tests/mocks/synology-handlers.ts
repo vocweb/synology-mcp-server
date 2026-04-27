@@ -36,35 +36,46 @@ export function setMailplusAvailable(value: boolean): void {
 // ---------------------------------------------------------------------------
 
 const FILE_FIXTURE = {
-  id: 'file-001',
+  file_id: 'file-001',
   name: 'report.osheet',
-  path: '/mydrive/report.osheet',
-  real_path: '/volume1/homes/admin/Drive/report.osheet',
+  path: '/report.osheet',
+  display_path: '/mydrive/report.osheet',
+  dsm_path: '/volume1/homes/admin/Drive/report.osheet',
   type: 'file' as const,
+  content_type: 'application/vnd.synology.spreadsheet',
   size: 2048,
-  additional: {
-    owner: { user: 'admin' },
-    time: { atime: 1700000000, ctime: 1700000000, crtime: 1699000000, mtime: 1700000000 },
-    perm: {
-      acl: { append: true, del: true, exec: false, read: true, write: true },
-      is_owner: true,
-    },
+  access_time: 1700000000,
+  modified_time: 1700000000,
+  created_time: 1699000000,
+  owner: { name: 'admin', uid: 1024 },
+  shared: false,
+  capabilities: {
+    can_read: true,
+    can_write: true,
+    can_delete: true,
+    can_organize: true,
   },
+  labels: [{ label_id: 'label-1', name: 'Important' }],
 };
 
 const FOLDER_FIXTURE = {
-  id: 'dir-001',
+  file_id: 'dir-001',
   name: 'projects',
-  path: '/mydrive/projects',
+  path: '/projects',
+  display_path: '/mydrive/projects',
   type: 'dir' as const,
+  content_type: 'dir',
   size: 0,
-  additional: {
-    owner: { user: 'admin' },
-    time: { atime: 1700000000, ctime: 1700000000, crtime: 1699000000, mtime: 1700000000 },
-    perm: {
-      acl: { append: true, del: true, exec: false, read: true, write: true },
-      is_owner: true,
-    },
+  access_time: 1700000000,
+  modified_time: 1700000000,
+  created_time: 1699000000,
+  owner: { name: 'admin', uid: 1024 },
+  shared: false,
+  capabilities: {
+    can_read: true,
+    can_write: true,
+    can_delete: true,
+    can_organize: true,
   },
 };
 
@@ -159,18 +170,18 @@ function handleGet(request: Request): Response {
   const api = url.searchParams.get('api');
   const method = url.searchParams.get('method');
 
-  // --- SYNO.Drive.Files ---
-  if (api === 'SYNO.Drive.Files') {
+  // --- SYNO.SynologyDrive.Files ---
+  if (api === 'SYNO.SynologyDrive.Files') {
     if (method === 'list') {
-      return ok({ total: 2, offset: 0, files: [FILE_FIXTURE, FOLDER_FIXTURE] });
+      return ok({ total: 2, items: [FILE_FIXTURE, FOLDER_FIXTURE] });
     }
     if (method === 'get') {
       const path = url.searchParams.get('path');
       if (path === '/mydrive/notfound') return synoError(408);
-      return ok({ ...FILE_FIXTURE, labels: ['Important'] });
+      return ok({ ...FILE_FIXTURE, labels: [{ label_id: 'label-1', name: 'Important' }] });
     }
     if (method === 'search') {
-      return ok({ total: 1, offset: 0, files: [FILE_FIXTURE] });
+      return ok({ total: 1, items: [FILE_FIXTURE] });
     }
     if (method === 'download') {
       const path = url.searchParams.get('path');
@@ -190,8 +201,8 @@ function handleGet(request: Request): Response {
     }
   }
 
-  // --- SYNO.Spreadsheet ---
-  if (api === 'SYNO.Spreadsheet') {
+  // --- SYNO.Office.Sheet.Snapshot ---
+  if (api === 'SYNO.Office.Sheet.Snapshot') {
     if (method === 'get_info') {
       const file_id = url.searchParams.get('file_id');
       if (file_id === 'not-found') return synoError(408);
@@ -202,18 +213,20 @@ function handleGet(request: Request): Response {
       if (file_id === 'not-found') return synoError(408);
       return ok(CELL_DATA_FIXTURE);
     }
-    if (method === 'export') {
-      const file_id = url.searchParams.get('file_id');
-      // HTTP 404 so exportFile sees response.ok=false and throws
-      if (file_id === 'not-found') return new HttpResponse(null, { status: 404 });
-      const buf = Buffer.from('PK mock xlsx content');
-      return new HttpResponse(buf, {
-        headers: {
-          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'Content-Disposition': 'attachment; filename="Budget.xlsx"',
-        },
-      });
-    }
+  }
+
+  // --- SYNO.Office.Export ---
+  if (api === 'SYNO.Office.Export' && method === 'export') {
+    const file_id = url.searchParams.get('file_id');
+    // HTTP 404 so exportFile sees response.ok=false and throws
+    if (file_id === 'not-found') return new HttpResponse(null, { status: 404 });
+    const buf = Buffer.from('PK mock xlsx content');
+    return new HttpResponse(buf, {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="Budget.xlsx"',
+      },
+    });
   }
 
   // --- SYNO.API.Info (MailPlus availability probe) ---
@@ -222,20 +235,20 @@ function handleGet(request: Request): Response {
       return ok({});
     }
     return ok({
-      'SYNO.MailPlus.Folder': { path: 'entry.cgi', minVersion: 1, maxVersion: 1 },
-      'SYNO.MailPlus.Message': { path: 'entry.cgi', minVersion: 1, maxVersion: 1 },
-      'SYNO.MailPlus.Compose': { path: 'entry.cgi', minVersion: 1, maxVersion: 1 },
-      'SYNO.MailPlus.Attachment': { path: 'entry.cgi', minVersion: 1, maxVersion: 1 },
+      'SYNO.MailClient.Mailbox': { path: 'entry.cgi', minVersion: 1, maxVersion: 1 },
+      'SYNO.MailClient.Message': { path: 'entry.cgi', minVersion: 1, maxVersion: 1 },
+      'SYNO.MailClient.Draft': { path: 'entry.cgi', minVersion: 1, maxVersion: 1 },
+      'SYNO.MailClient.Attachment': { path: 'entry.cgi', minVersion: 1, maxVersion: 1 },
     });
   }
 
-  // --- SYNO.MailPlus.Folder ---
-  if (api === 'SYNO.MailPlus.Folder' && method === 'list') {
+  // --- SYNO.MailClient.Mailbox ---
+  if (api === 'SYNO.MailClient.Mailbox' && method === 'list') {
     return ok(MAIL_FOLDER_FIXTURE);
   }
 
-  // --- SYNO.MailPlus.Message ---
-  if (api === 'SYNO.MailPlus.Message') {
+  // --- SYNO.MailClient.Message ---
+  if (api === 'SYNO.MailClient.Message') {
     if (method === 'list') {
       return ok({ total: 1, messages: [MAIL_MESSAGE_FIXTURE] });
     }
@@ -246,8 +259,8 @@ function handleGet(request: Request): Response {
     }
   }
 
-  // --- SYNO.MailPlus.Attachment ---
-  if (api === 'SYNO.MailPlus.Attachment' && method === 'get') {
+  // --- SYNO.MailClient.Attachment ---
+  if (api === 'SYNO.MailClient.Attachment' && method === 'get') {
     const buf = Buffer.from('attachment content');
     return new HttpResponse(buf, {
       headers: { 'Content-Type': 'application/octet-stream' },
@@ -282,8 +295,8 @@ function handlePost(request: Request): Response {
   const api = url.searchParams.get('api');
   const method = url.searchParams.get('method');
 
-  // --- SYNO.Drive.Files ---
-  if (api === 'SYNO.Drive.Files') {
+  // --- SYNO.SynologyDrive.Files ---
+  if (api === 'SYNO.SynologyDrive.Files') {
     if (method === 'upload') {
       return ok({ file_id: 'new-file-001', path: '/mydrive/uploads/test.txt', name: 'test.txt' });
     }
@@ -303,13 +316,13 @@ function handlePost(request: Request): Response {
     if (method === 'add_label') return ok({});
   }
 
-  // --- SYNO.Drive.Sharing ---
-  if (api === 'SYNO.Drive.Sharing' && method === 'create') {
+  // --- SYNO.SynologyDrive.Sharing ---
+  if (api === 'SYNO.SynologyDrive.Sharing' && method === 'create') {
     return ok({ link: 'https://nas.local/d/abc123', permission: 'view', expire_time: null });
   }
 
-  // --- SYNO.Spreadsheet ---
-  if (api === 'SYNO.Spreadsheet') {
+  // --- SYNO.Office.Sheet.Snapshot ---
+  if (api === 'SYNO.Office.Sheet.Snapshot') {
     if (method === 'set_cells') {
       const file_id = url.searchParams.get('file_id');
       if (file_id === 'not-found') return synoError(408);
@@ -325,14 +338,14 @@ function handlePost(request: Request): Response {
     }
   }
 
-  // --- SYNO.MailPlus.Message (mark / move) ---
-  if (api === 'SYNO.MailPlus.Message') {
+  // --- SYNO.MailClient.Message (mark / move) ---
+  if (api === 'SYNO.MailClient.Message') {
     if (method === 'mark') return ok({});
     if (method === 'move') return ok({});
   }
 
-  // --- SYNO.MailPlus.Compose ---
-  if (api === 'SYNO.MailPlus.Compose' && method === 'send') {
+  // --- SYNO.MailClient.Draft ---
+  if (api === 'SYNO.MailClient.Draft' && method === 'send') {
     return ok({ message_id: 'sent-msg-001', sent_at: 1700001000 });
   }
 

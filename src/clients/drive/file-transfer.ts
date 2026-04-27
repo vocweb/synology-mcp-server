@@ -45,7 +45,11 @@ export async function upload(deps: TransferDeps, opts: UploadOpts): Promise<Driv
   form.append('_sid', sid);
   form.append('file', buffer, { filename: opts.file_name, contentType: opts.mime_type });
 
-  const qs = new URLSearchParams({ api: 'SYNO.Drive.Files', version: '2', method: 'upload' });
+  const qs = new URLSearchParams({
+    api: 'SYNO.SynologyDrive.Files',
+    version: '2',
+    method: 'upload',
+  });
   const url = `${deps.baseUrl}/webapi/entry.cgi?${qs.toString()}`;
   const init: Record<string, unknown> = {
     method: 'POST',
@@ -74,7 +78,7 @@ export async function upload(deps: TransferDeps, opts: UploadOpts): Promise<Driv
     error?: { code: number };
   };
   if (!envelope.success) {
-    throw mapSynologyError(envelope.error?.code ?? 100, 'SYNO.Drive.Files');
+    throw mapSynologyError(envelope.error?.code ?? 100, 'SYNO.SynologyDrive.Files');
   }
   if (!envelope.data) {
     throw new NetworkError('Upload succeeded but response contained no data field');
@@ -94,7 +98,7 @@ export async function upload(deps: TransferDeps, opts: UploadOpts): Promise<Driv
 export async function download(deps: TransferDeps, filePath: string): Promise<DriveDownloadResult> {
   const sid = await deps.getToken();
   const qs = new URLSearchParams({
-    api: 'SYNO.Drive.Files',
+    api: 'SYNO.SynologyDrive.Files',
     version: '2',
     method: 'download',
     path: sanitizePath(filePath),
@@ -122,7 +126,7 @@ export async function download(deps: TransferDeps, filePath: string): Promise<Dr
   if (contentType.includes('application/json')) {
     const errJson = (await response.json()) as { success: boolean; error?: { code: number } };
     if (!errJson.success) {
-      throw mapSynologyError(errJson.error?.code ?? 100, 'SYNO.Drive.Files');
+      throw mapSynologyError(errJson.error?.code ?? 100, 'SYNO.SynologyDrive.Files');
     }
   }
 

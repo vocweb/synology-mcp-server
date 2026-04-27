@@ -1,7 +1,7 @@
 /**
  * Synology MailPlus API client.
- * Wraps SYNO.MailPlus.Folder, SYNO.MailPlus.Message, SYNO.MailPlus.Compose,
- * and SYNO.MailPlus.Attachment endpoints.
+ * Wraps SYNO.MailClient.Mailbox, SYNO.MailClient.Message, SYNO.MailClient.Draft,
+ * and SYNO.MailClient.Attachment endpoints.
  * Availability is probed once via SYNO.API.Info and cached for the client lifetime.
  * Per spec §7.3.
  */
@@ -112,7 +112,7 @@ interface SynoApiInfoResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Wraps all SYNO.MailPlus operations.
+ * Wraps all SYNO.MailClient operations.
  * isAvailable() probes SYNO.API.Info once and caches the result.
  */
 export class MailPlusClient extends BaseClient {
@@ -138,10 +138,10 @@ export class MailPlusClient extends BaseClient {
           api: 'SYNO.API.Info',
           version: 1,
           method: 'query',
-          query: 'SYNO.MailPlus.Folder',
+          query: 'SYNO.MailClient.Mailbox',
         },
       });
-      this._available = 'SYNO.MailPlus.Folder' in result;
+      this._available = 'SYNO.MailClient.Mailbox' in result;
     } catch {
       this._available = false;
     }
@@ -156,7 +156,7 @@ export class MailPlusClient extends BaseClient {
    */
   listFolders(account?: string): Promise<SynoMailFolder[]> {
     const params: Record<string, string | number | boolean> = {
-      api: 'SYNO.MailPlus.Folder',
+      api: 'SYNO.MailClient.Mailbox',
       version: 1,
       method: 'list',
     };
@@ -172,7 +172,7 @@ export class MailPlusClient extends BaseClient {
    */
   listMessages(opts: ListMessagesOpts): Promise<SynoMailListResponse> {
     const params: Record<string, string | number | boolean> = {
-      api: 'SYNO.MailPlus.Message',
+      api: 'SYNO.MailClient.Message',
       version: 1,
       method: 'list',
       folder_path: opts.folder_path ?? 'INBOX',
@@ -202,7 +202,7 @@ export class MailPlusClient extends BaseClient {
       endpoint: ENTRY,
       method: 'GET',
       params: {
-        api: 'SYNO.MailPlus.Message',
+        api: 'SYNO.MailClient.Message',
         version: 1,
         method: 'get',
         message_id: opts.message_id,
@@ -232,7 +232,7 @@ export class MailPlusClient extends BaseClient {
   }
 
   /**
-   * Fetch raw attachment bytes from SYNO.MailPlus.Attachment.
+   * Fetch raw attachment bytes from SYNO.MailClient.Attachment.
    *
    * @param attachment_id - Attachment ID.
    * @param message_id - Parent message ID.
@@ -240,7 +240,7 @@ export class MailPlusClient extends BaseClient {
   private async fetchAttachmentContent(attachment_id: string, message_id: string): Promise<Buffer> {
     const sid = await this.authManager.getToken();
     const qs = new URLSearchParams({
-      api: 'SYNO.MailPlus.Attachment',
+      api: 'SYNO.MailClient.Attachment',
       version: '1',
       method: 'get',
       attachment_id,
@@ -258,13 +258,13 @@ export class MailPlusClient extends BaseClient {
   }
 
   /**
-   * Send an email message using SYNO.MailPlus.Compose.
+   * Send an email message using SYNO.MailClient.Draft.
    * Attachments are decoded from base64 to Buffer and sent as multipart.
    *
    * @param opts - Recipient lists, subject, body, and optional attachments.
    */
   /**
-   * Send an email message using SYNO.MailPlus.Compose.
+   * Send an email message using SYNO.MailClient.Draft.
    * api/version/method go on the query string (matching all other POST handlers);
    * message fields and attachments go in the multipart body.
    *
@@ -290,7 +290,7 @@ export class MailPlusClient extends BaseClient {
 
     const sid = await this.authManager.getToken();
     const qs = new URLSearchParams({
-      api: 'SYNO.MailPlus.Compose',
+      api: 'SYNO.MailClient.Draft',
       version: '1',
       method: 'send',
     });
@@ -333,7 +333,7 @@ export class MailPlusClient extends BaseClient {
    */
   async mark(opts: MarkMessagesOpts): Promise<void> {
     const params: Record<string, string | number | boolean> = {
-      api: 'SYNO.MailPlus.Message',
+      api: 'SYNO.MailClient.Message',
       version: 1,
       method: 'mark',
       message_ids: JSON.stringify(opts.message_ids),
@@ -351,7 +351,7 @@ export class MailPlusClient extends BaseClient {
    */
   async move(opts: MoveMessagesOpts): Promise<void> {
     const params: Record<string, string | number | boolean> = {
-      api: 'SYNO.MailPlus.Message',
+      api: 'SYNO.MailClient.Message',
       version: 1,
       method: 'move',
       message_ids: JSON.stringify(opts.message_ids),

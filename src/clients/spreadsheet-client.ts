@@ -1,7 +1,7 @@
 /**
- * Synology Spreadsheet API client.
- * Wraps SYNO.Spreadsheet v1 endpoints: getInfo, getCells, setCells,
- * create, addSheet, exportFile.
+ * Synology Office Spreadsheet API client.
+ * Wraps SYNO.Office.Sheet.Snapshot v1 endpoints (getInfo, getCells, setCells,
+ * create, addSheet) and SYNO.Office.Export for binary export.
  * Per spec §7.2.
  */
 
@@ -11,10 +11,12 @@ import type { AuthManager } from '../auth/auth-manager.js';
 import type { SynologyConfig } from '../types/index.js';
 import type { SynoSpreadsheetInfo, SynoCellData } from '../types/synology-types.js';
 
-/** SYNO.Spreadsheet entry.cgi endpoint path */
+/** Synology entry.cgi endpoint path */
 const ENTRY = '/webapi/entry.cgi';
-/** API name used in every request */
-const API = 'SYNO.Spreadsheet';
+/** API name used for sheet snapshot read/write operations */
+const API = 'SYNO.Office.Sheet.Snapshot';
+/** API name used for binary export (xlsx/csv) */
+const EXPORT_API = 'SYNO.Office.Export';
 
 // ---------------------------------------------------------------------------
 // Input/output types
@@ -86,7 +88,7 @@ export interface ExportFileResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Wraps all SYNO.Spreadsheet operations.
+ * Wraps all SYNO.Office.Sheet.Snapshot operations plus SYNO.Office.Export.
  * Binary export bypasses request<T>() and uses direct fetch.
  */
 export class SpreadsheetClient extends BaseClient {
@@ -191,7 +193,7 @@ export class SpreadsheetClient extends BaseClient {
   async exportFile(opts: ExportFileOpts): Promise<ExportFileResult> {
     const sid = await this.authManager.getToken();
     const qs = new URLSearchParams({
-      api: API,
+      api: EXPORT_API,
       version: '1',
       method: 'export',
       file_id: opts.file_id,
