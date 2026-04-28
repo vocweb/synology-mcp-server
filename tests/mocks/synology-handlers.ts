@@ -374,6 +374,240 @@ function handlePost(request: Request): Response {
 }
 
 // ---------------------------------------------------------------------------
+// Spreadsheet REST handlers (OpenAPI 3.3.2 — synology/spreadsheet-api)
+// ---------------------------------------------------------------------------
+
+/** POST /spreadsheets/authorize */
+const spreadsheetAuthHandler = http.post('http://nas.local:3000/spreadsheets/authorize', () => {
+  return HttpResponse.json({ token: 'test-jwt-token-xyz' });
+});
+
+/** POST /spreadsheets/authorize/token/revoke */
+const spreadsheetRevokeHandler = http.post(
+  'http://nas.local:3000/spreadsheets/authorize/token/revoke',
+  () => HttpResponse.json({ success: true }),
+);
+
+/** GET /spreadsheets/{id} — spec: nested properties, colCount (not columnCount). */
+const spreadsheetGetInfoHandler = http.get('http://nas.local:3000/spreadsheets/:id', ({ params }) => {
+  const id = params.id as string;
+  if (id === 'sheet-001' || id === 'file123') {
+    return HttpResponse.json({
+      id,
+      properties: { title: 'Budget.osheet', locale: 'en_US' },
+      sheets: [
+        {
+          properties: { title: 'Sheet1', sheetId: 's1', index: 0, hidden: false },
+          rowCount: 10,
+          colCount: 4,
+        },
+        {
+          properties: { title: 'Summary', sheetId: 's2', index: 1, hidden: false },
+          rowCount: 5,
+          colCount: 2,
+        },
+      ],
+    });
+  }
+  return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+});
+
+/** GET /spreadsheets/{id}/values/{range} — spec: { range, majorDimension, values }. */
+const spreadsheetGetCellsHandler = http.get(
+  'http://nas.local:3000/spreadsheets/:id/values/:range',
+  ({ params }) => {
+    if (params.id === 'not-found') {
+      return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    return HttpResponse.json({
+      range: 'Sheet1!A1:D3',
+      majorDimension: 'ROWS',
+      values: [
+        ['Name', 'Age', 'City', 'Score'],
+        ['Alice', 30, 'NYC', 95],
+        ['Bob', 25, 'LA', 87],
+      ],
+    });
+  },
+);
+
+/** PUT /spreadsheets/{id}/values/{range} — echoes back GetValueResponse. */
+const spreadsheetSetCellsHandler = http.put(
+  'http://nas.local:3000/spreadsheets/:id/values/:range',
+  ({ params }) => {
+    if (params.id === 'not-found') {
+      return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    return HttpResponse.json({
+      range: 'Sheet1!A1:B2',
+      majorDimension: 'ROWS',
+      values: [
+        [1, 2],
+        [3, 4],
+      ],
+    });
+  },
+);
+
+/** PUT /spreadsheets/{id}/values/{range}/append — spec: AppendResponse. */
+const spreadsheetAppendRowsHandler = http.put(
+  'http://nas.local:3000/spreadsheets/:id/values/:range/append',
+  ({ params }) => {
+    if (params.id === 'not-found') {
+      return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    return HttpResponse.json({
+      tableRange: 'A1:D6',
+      updates: { updateRange: 'A7:D8', updateRows: 2, updateColumns: 4 },
+      spreadsheetId: params.id,
+    });
+  },
+);
+
+/** POST /spreadsheets/create — spec: returns { spreadsheetId } only. */
+const spreadsheetCreateHandler = http.post('http://nas.local:3000/spreadsheets/create', () => {
+  return HttpResponse.json({ spreadsheetId: 'new-sheet-001' });
+});
+
+/** POST /spreadsheets/{id}/sheet/add — spec: { addSheet: { properties: {...} } }. */
+const spreadsheetAddSheetHandler = http.post(
+  'http://nas.local:3000/spreadsheets/:id/sheet/add',
+  ({ params }) => {
+    if (params.id === 'not-found') {
+      return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    return HttpResponse.json({
+      addSheet: {
+        properties: { sheetId: 'new-sheet-tab-001', title: 'NewTab', index: 2 },
+      },
+    });
+  },
+);
+
+/** Spreadsheet API export (XLSX) handler */
+const spreadsheetExportXlsxHandler = http.get('http://nas.local:3000/spreadsheets/:id/xlsx', ({ params }) => {
+  if (params.id === 'not-found') {
+    return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+  const buffer = Buffer.from('PK\x03\x04'); // Minimal ZIP header
+  return HttpResponse.arrayBuffer(buffer, {
+    headers: {
+      'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'content-disposition': 'attachment; filename="Budget.xlsx"',
+    },
+  });
+});
+
+/** Spreadsheet API export (CSV) handler */
+const spreadsheetExportCsvHandler = http.get('http://nas.local:3000/spreadsheets/:id/sheet/csv', ({ params }) => {
+  if (params.id === 'not-found') {
+    return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+  const csv = 'Name,Age,City,Score\nAlice,30,NYC,95\nBob,25,LA,87';
+  return HttpResponse.text(csv, {
+    headers: {
+      'content-type': 'text/csv',
+      'content-disposition': 'attachment; filename="data.csv"',
+    },
+  });
+});
+
+/** GET /spreadsheets/{id}/styles/{range} — spec: { range, rows: [{ values: CellStyle[] }] }. */
+const spreadsheetGetStylesHandler = http.get(
+  'http://nas.local:3000/spreadsheets/:id/styles/:range',
+  () => {
+    return HttpResponse.json({
+      range: 'Sheet1!A1:B2',
+      rows: [
+        {
+          values: [
+            {
+              effectiveValue: 'Header',
+              formattedValue: 'Header',
+              userEnteredFormat: {
+                textFormat: { bold: true, name: 'Arial', size: 12, color: '000000' },
+                bg: 'fffffe',
+                horizontalAlignment: 'center',
+              },
+              effectiveFormat: {
+                textFormat: { bold: true, name: 'Arial', size: 12, color: '000000' },
+                bg: 'fffffe',
+                horizontalAlignment: 'center',
+              },
+            },
+            {
+              effectiveValue: 'Value',
+              formattedValue: 'Value',
+              userEnteredFormat: { textFormat: { name: 'Arial', size: 12 } },
+              effectiveFormat: { textFormat: { name: 'Arial', size: 12 } },
+            },
+          ],
+        },
+        {
+          values: [
+            {
+              effectiveValue: 1,
+              formattedValue: '1',
+              userEnteredFormat: { textFormat: { name: 'Arial', size: 11 } },
+              effectiveFormat: { textFormat: { name: 'Arial', size: 11 } },
+            },
+            {
+              effectiveValue: 2,
+              formattedValue: '2',
+              userEnteredFormat: { textFormat: { name: 'Arial', size: 11 } },
+              effectiveFormat: { textFormat: { name: 'Arial', size: 11 } },
+            },
+          ],
+        },
+      ],
+    });
+  },
+);
+
+/** POST /spreadsheets/{id}/sheet/rename — spec: RenameSheetResponse. */
+const spreadsheetRenameSheetHandler = http.post(
+  'http://nas.local:3000/spreadsheets/:id/sheet/rename',
+  async ({ params, request }) => {
+    const body = (await request.json()) as { sheetId?: string; sheetName?: string };
+    return HttpResponse.json({
+      spreadsheetId: params.id,
+      sheetId: body.sheetId ?? 'sh_1',
+      sheetName: body.sheetName ?? 'renamed',
+    });
+  },
+);
+
+/** POST /spreadsheets/{id}/sheet/delete — spec: DeleteSheetResponse. */
+const spreadsheetDeleteSheetHandler = http.post(
+  'http://nas.local:3000/spreadsheets/:id/sheet/delete',
+  ({ params }) => HttpResponse.json({ spreadsheetId: params.id }),
+);
+
+/** POST /spreadsheets/{id}/batchUpdate — spec: empty object. */
+const spreadsheetBatchUpdateHandler = http.post(
+  'http://nas.local:3000/spreadsheets/:id/batchUpdate',
+  () => HttpResponse.json({}),
+);
+
+/** All Spreadsheet REST handlers. */
+const spreadsheetHandlers = [
+  spreadsheetAuthHandler,
+  spreadsheetRevokeHandler,
+  spreadsheetGetInfoHandler,
+  spreadsheetGetCellsHandler,
+  spreadsheetSetCellsHandler,
+  spreadsheetAppendRowsHandler,
+  spreadsheetCreateHandler,
+  spreadsheetAddSheetHandler,
+  spreadsheetExportXlsxHandler,
+  spreadsheetExportCsvHandler,
+  spreadsheetGetStylesHandler,
+  spreadsheetRenameSheetHandler,
+  spreadsheetDeleteSheetHandler,
+  spreadsheetBatchUpdateHandler,
+];
+
+// ---------------------------------------------------------------------------
 // Exported handler arrays
 // ---------------------------------------------------------------------------
 
@@ -394,4 +628,4 @@ export const authHandlers = [
 ];
 
 /** All handlers combined — use in setupServer(...allHandlers) for full coverage. */
-export const allHandlers = [...authHandlers, ...driveHandlers];
+export const allHandlers = [...authHandlers, ...driveHandlers, ...spreadsheetHandlers];

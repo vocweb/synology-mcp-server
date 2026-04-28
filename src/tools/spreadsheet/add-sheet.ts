@@ -8,14 +8,8 @@ import type { ToolDefinition, ToolContext } from '../types.js';
 import { toMcpError } from '../types.js';
 
 const inputSchema = z.object({
-  file_id: z.string().describe('Drive file ID of the .osheet file'),
+  file_id: z.string().describe('Spreadsheet ID of the .osheet file'),
   sheet_name: z.string().describe('Name for the new sheet'),
-  position: z
-    .number()
-    .int()
-    .min(0)
-    .optional()
-    .describe('0-indexed position to insert the sheet. Omit to add at end.'),
 });
 
 /** spreadsheet_add_sheet tool definition */
@@ -28,12 +22,12 @@ export const spreadsheetAddSheetTool: ToolDefinition<typeof inputSchema> = {
       const result = await ctx.spreadsheetClient.addSheet({
         file_id: input.file_id,
         sheet_name: input.sheet_name,
-        ...(input.position !== undefined ? { position: input.position } : {}),
       });
 
       return {
         success: result.success,
         sheet_id: result.sheet_id,
+        index: result.index,
       };
     } catch (err) {
       return toMcpError(err);
