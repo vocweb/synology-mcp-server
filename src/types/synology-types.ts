@@ -150,3 +150,191 @@ export interface SynoCalEvent {
   /** Optional attendee list */
   attendee?: Array<{ email: string; name: string; status: string }>;
 }
+
+// ============================================================================
+// Synology Spreadsheet API REST Types
+// Matches OpenAPI 3.3.2 (Synology Office package >= 3.6.0;
+// Docker tag synology/spreadsheet-api:3.4.1+ requires Synology Office >= 3.7.0).
+// ============================================================================
+
+/** Cell value: literal or rich-text segment object. */
+export type CellJSON = string | number | boolean | RichTextJSON;
+export type CellJSON2D = CellJSON[][];
+
+/** Style for a single rich-text segment (compact short keys). */
+export interface CompactFontJSON {
+  /** font family */
+  n?: string;
+  /** font size */
+  sz?: number;
+  /** bold */
+  b?: boolean;
+  /** italic */
+  i?: boolean;
+  /** strike-through */
+  s?: boolean;
+  /** underline */
+  u?: boolean;
+  /** color (hex without #) */
+  c?: string;
+}
+
+export interface RichTextRunJSON {
+  /** segment text */
+  tx: string;
+  /** segment style */
+  s?: CompactFontJSON;
+}
+
+/** Rich text cell (`{ t: 'r', v: [...] }`). */
+export interface RichTextJSON {
+  t: 'r';
+  v: RichTextRunJSON[];
+}
+
+/** Sheet ID like `sh_1` (suffix from URL `#tid=N`). */
+export type SheetId = string;
+export type Dimension = 'ROWS' | 'COLUMNS';
+
+/** Sheet tab properties. */
+export interface SheetProperties {
+  title: string;
+  sheetId: SheetId;
+  index: number;
+  hidden?: boolean;
+}
+
+/** Worksheet payload as returned inside `SpreadsheetData.sheets[]`. */
+export interface WorksheetData {
+  properties: SheetProperties;
+  rowCount: number;
+  colCount: number;
+  fixedColumnLeft?: number;
+  fixedRowTop?: number;
+  /** Each entry is a 4-tuple [row1, col1, row2, col2]. */
+  mergeCells?: number[][];
+}
+
+/** Workbook-level properties. */
+export interface SpreadsheetProperties {
+  title: string;
+  locale?: string;
+}
+
+/** GET /spreadsheets/{id} response. */
+export interface SpreadsheetData {
+  id: string;
+  properties: SpreadsheetProperties;
+  sheets: WorksheetData[];
+}
+
+/** Number format. */
+export interface NumberFormat {
+  type?: 'DEFAULT' | 'DATE_TIME' | 'DATE' | 'TIME' | 'TEXT' | 'DURATION';
+  pattern?: string;
+}
+
+export interface TextFormat {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strike?: boolean;
+  color?: string;
+  name?: string;
+  size?: number;
+}
+
+export interface CellFormat {
+  numberFormat?: NumberFormat | null;
+  verticalAlignment?: 'top' | 'middle' | 'bottom' | null;
+  textFormat?: TextFormat;
+  /** Background color (hex without #). */
+  bg?: string | null;
+  quotePrefix?: boolean;
+  horizontalAlignment?: 'left' | 'center' | 'right' | null;
+  wrapStrategy?: 'wrap' | 'clip' | null;
+  /** Border colors top/right/bottom/left. */
+  borders?: Array<string | null> | null;
+}
+
+export interface FormulaError {
+  error: string;
+}
+
+/** Cell style entry as returned by GET /styles/{range}. */
+export interface CellStyle {
+  userEnteredValue?: CellJSON;
+  effectiveValue?: string | number | boolean | FormulaError;
+  formattedValue?: string;
+  userEnteredFormat?: CellFormat;
+  effectiveFormat?: CellFormat;
+  hyperlink?: string;
+}
+
+/** GET /spreadsheets/{id}/values/{range}. */
+export interface GetValueResponse {
+  range: string;
+  majorDimension: Dimension;
+  values: CellJSON2D;
+}
+
+/** PUT /spreadsheets/{id}/values/{range}/append. */
+export interface AppendResponse {
+  tableRange: string;
+  updates: {
+    updateRange: string;
+    updateRows: number;
+    updateColumns: number;
+  };
+  spreadsheetId: string;
+}
+
+/** POST /spreadsheets/{id}/sheet/add. */
+export interface AddSheetResponse {
+  addSheet: {
+    properties: {
+      sheetId: SheetId;
+      title: string;
+      index: number;
+    };
+  };
+}
+
+/** POST /spreadsheets/{id}/sheet/rename. */
+export interface RenameSheetResponse {
+  spreadsheetId: string;
+  sheetId: SheetId;
+  sheetName: string;
+}
+
+/** POST /spreadsheets/{id}/sheet/delete. */
+export interface DeleteSheetResponse {
+  spreadsheetId: string;
+}
+
+/** POST /spreadsheets/create. */
+export interface CreateSpreadsheetResponse {
+  spreadsheetId: string;
+}
+
+/** GET /spreadsheets/{id}/styles/{range}. */
+export interface GetStyleResponse {
+  range: string;
+  rows: Array<{ values: CellStyle[] }>;
+}
+
+/** POST /spreadsheets/{id}/batchUpdate – single request item. */
+export type BatchUpdateRequestItem =
+  | { insertDimension: { range: DimensionRange; inheritFromBefore?: boolean } }
+  | { deleteDimension: { range: DimensionRange } };
+
+export interface DimensionRange {
+  sheetId: SheetId;
+  dimension: Dimension;
+  startIndex: number;
+  endIndex: number;
+}
+
+export interface BatchUpdateRequest {
+  requests: BatchUpdateRequestItem[];
+}

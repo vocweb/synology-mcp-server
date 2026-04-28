@@ -9,28 +9,18 @@ import { toMcpError } from '../types.js';
 
 const inputSchema = z.object({
   name: z.string().describe('Spreadsheet name (without extension)'),
-  dest_folder_path: z.string().default('/mydrive').describe('Drive folder to create the file in'),
-  initial_sheet_name: z.string().default('Sheet1').describe('Name of the first sheet'),
 });
 
 /** spreadsheet_create tool definition */
 export const spreadsheetCreateTool: ToolDefinition<typeof inputSchema> = {
   name: 'spreadsheet_create',
-  description: 'Create a new empty Synology Spreadsheet (.osheet) file in a Drive folder.',
+  description:
+    'Create a new empty Synology Spreadsheet (.osheet). Note: the Spreadsheet API has no notion of destination folder; use Drive tools to move the file afterwards if needed.',
   inputSchema,
   async handler(input: z.infer<typeof inputSchema>, ctx: ToolContext) {
     try {
-      const result = await ctx.spreadsheetClient.create({
-        name: input.name,
-        dest_folder_path: input.dest_folder_path,
-        initial_sheet_name: input.initial_sheet_name,
-      });
-
-      return {
-        success: true,
-        file_id: result.file_id,
-        file_path: result.file_path,
-      };
+      const result = await ctx.spreadsheetClient.create({ name: input.name });
+      return { success: true, file_id: result.file_id };
     } catch (err) {
       return toMcpError(err);
     }

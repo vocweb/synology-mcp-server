@@ -11,9 +11,13 @@ import { spreadsheetAppendRowsTool } from './append-rows.js';
 import { spreadsheetCreateTool } from './create.js';
 import { spreadsheetAddSheetTool } from './add-sheet.js';
 import { spreadsheetExportTool } from './export.js';
+import { spreadsheetGetStylesTool } from './get-styles.js';
+import { spreadsheetRenameSheetTool } from './rename-sheet.js';
+import { spreadsheetDeleteSheetTool } from './delete-sheet.js';
+import { spreadsheetBatchUpdateTool } from './batch-update.js';
 import type { ToolDefinition } from '../types.js';
 
-/** All 8 Spreadsheet tool definitions, ready for MCP server registration. */
+/** All 12 Spreadsheet tool definitions, ready for MCP server registration. */
 export const spreadsheetTools: ToolDefinition[] = [
   spreadsheetListTool,
   spreadsheetGetInfoTool,
@@ -23,4 +27,8 @@ export const spreadsheetTools: ToolDefinition[] = [
   spreadsheetCreateTool,
   spreadsheetAddSheetTool,
   spreadsheetExportTool,
+  spreadsheetGetStylesTool,
+  spreadsheetRenameSheetTool,
+  spreadsheetDeleteSheetTool,
+  spreadsheetBatchUpdateTool,
 ];

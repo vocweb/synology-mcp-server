@@ -14,19 +14,14 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 describe('spreadsheet_create', () => {
-  it('returns success, file_id, and file_path', async () => {
+  it('returns success and file_id', async () => {
     const ctx = createTestContext();
     const result = (await spreadsheetCreateTool.handler(
-      {
-        name: 'NewSheet',
-        dest_folder_path: '/mydrive',
-        initial_sheet_name: 'Sheet1',
-      },
+      { name: 'NewSheet' },
       ctx,
     )) as Record<string, unknown>;
 
     expect(result['success']).toBe(true);
     expect(result['file_id']).toBe('new-sheet-001');
-    expect(typeof result['file_path']).toBe('string');
   });
 });

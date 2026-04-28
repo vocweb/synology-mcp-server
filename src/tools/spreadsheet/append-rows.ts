@@ -1,7 +1,7 @@
 /**
  * MCP tool: spreadsheet_append_rows
- * Appends rows after the last non-empty row. Requires confirm=true.
- * Composition: reads minimal range to find total_rows, then calls setCells.
+ * Appends rows after the last non-empty row using REST API native append endpoint.
+ * Requires confirm=true.
  */
 
 import { z } from 'zod';
@@ -30,30 +30,17 @@ export const spreadsheetAppendRowsTool: ToolDefinition<typeof inputSchema> = {
     }
 
     try {
-      // Read minimal range (column A only) to determine the last occupied row
-      const existing = await ctx.spreadsheetClient.getCells({
+      // Use native REST API append endpoint (efficient, automatic row detection)
+      const result = await ctx.spreadsheetClient.appendRows({
         file_id: input.file_id,
         sheet_name: input.sheet_name,
-      });
-
-      const total_existing_rows = existing.values.length;
-      // Append starts one row below last occupied row (1-indexed for A1 notation)
-      const start_row = total_existing_rows + 1;
-      const start_cell = `A${start_row}`;
-
-      await ctx.spreadsheetClient.setCells({
-        file_id: input.file_id,
-        sheet_name: input.sheet_name,
-        start_cell,
+        start_cell: 'A1', // API automatically appends after last data row
         values: input.rows,
       });
 
-      const new_last_row = total_existing_rows + input.rows.length;
-
       return {
         success: true,
-        rows_appended: input.rows.length,
-        new_last_row,
+        rows_appended: result.updatedRows,
       };
     } catch (err) {
       return toMcpError(err);
