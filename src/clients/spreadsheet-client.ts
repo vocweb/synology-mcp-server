@@ -1,7 +1,14 @@
 /**
- * Synology Office Spreadsheet API v3.7+ REST client.
- * Wraps REST endpoints (getInfo, getCells, setCells, create, addSheet, etc.)
- * Per spec §7.3 (Spreadsheet API v3.7+).
+ * Synology Spreadsheet REST API client.
+ *
+ * Wraps the Synology Office Suite Spreadsheet API documented at
+ * https://office-suite-api.synology.com/Synology-Spreadsheet/v3-3-2
+ * (OpenAPI 3.3.2; requires Synology Office package >= 3.6.0; the matching
+ * synology/spreadsheet-api Docker container default port is 3000).
+ *
+ * The MCP tool surface stays flat/internal (SynoSpreadsheetInfo/SynoCellData);
+ * this client translates between the spec's nested shapes and those internal
+ * structures. Authentication is handled by SpreadsheetAuthManager (JWT bearer).
  */
 
 import { Agent } from 'undici';
@@ -12,21 +19,29 @@ import type {
   SynoSpreadsheetInfo,
   SynoCellData,
   SynoSheetInfo,
-  SpreadsheetDataV2,
-  SheetDataV2,
+  SpreadsheetData,
+  WorksheetData,
   GetValueResponse,
   AppendResponse,
   AddSheetResponse,
+  RenameSheetResponse,
+  CreateSpreadsheetResponse,
   GetStyleResponse,
   CellStyle,
+  CellJSON2D,
+  BatchUpdateRequest,
+  BatchUpdateRequestItem,
+  Dimension,
 } from '../types/synology-types.js';
 import { NetworkError, SynologyMcpError } from '../errors.js';
 
 // ---------------------------------------------------------------------------
-// Input/output types
+// Tool-facing input/output types (kept stable across the migration)
 // ---------------------------------------------------------------------------
 
-/** Options for getCells */
+/** Cell scalar accepted by tool inputs (rich text not authored from tools). */
+export type CellValue = string | number | boolean | null;
+
 export interface GetCellsOpts {
   file_id: string;
   sheet_name?: string | undefined;
@@ -34,110 +49,100 @@ export interface GetCellsOpts {
   include_formulas?: boolean | undefined;
 }
 
-/** Options for setCells */
 export interface SetCellsOpts {
   file_id: string;
   sheet_name: string;
   start_cell: string;
-  values: Array<Array<string | number | boolean | null>>;
+  values: CellValue[][];
 }
 
-/** Result of a setCells call */
 export interface SetCellsResult {
   success: boolean;
 }
 
-/** Options for appendRows (native REST endpoint) */
 export interface AppendRowsOpts {
   file_id: string;
   sheet_name: string;
   start_cell: string;
-  values: Array<Array<string | number | boolean | null>>;
+  values: CellValue[][];
 }
 
-/** Result of appendRows */
 export interface AppendRowsResult {
   success: boolean;
   updatedRows: number;
 }
 
-/** Options for create */
 export interface CreateSpreadsheetOpts {
   name: string;
-  dest_folder_path: string;
-  initial_sheet_name: string;
+  /** Currently ignored — Spreadsheet API has no folder concept; use Drive API to move. */
+  dest_folder_path?: string;
+  /** Currently ignored — first sheet is named by the Spreadsheet API itself. */
+  initial_sheet_name?: string;
 }
 
-/** Result of creating a new spreadsheet */
 export interface CreateSpreadsheetResult {
   file_id: string;
-  file_path: string;
 }
 
-/** Options for addSheet */
 export interface AddSheetOpts {
   file_id: string;
   sheet_name: string;
+  /** Ignored — spec body does not accept a position. */
   position?: number | undefined;
 }
 
-/** Result of addSheet */
 export interface AddSheetResult {
   success: boolean;
   sheet_id: string;
+  index: number;
 }
 
-/** Options for exportFile */
 export interface ExportFileOpts {
   file_id: string;
   format: 'xlsx' | 'csv';
-  sheet_name?: string | undefined;
+  /** For CSV: the sheetId (e.g. "sh_1") to export. For xlsx: ignored. */
+  sheet_id?: string | undefined;
 }
 
-/** Raw export response from Synology (binary buffer + meta) */
 export interface ExportFileResult {
   buffer: Buffer;
   file_name: string;
   mime_type: string;
 }
 
-/** Options for getStyles */
 export interface GetStylesOpts {
   file_id: string;
   sheet_name: string;
   range: string;
 }
 
-/** Result of getStyles */
 export interface GetStylesResult {
-  sheet: string;
   range: string;
-  styles: Array<Array<CellStyle | null>>;
+  /** 2D grid of cell styles aligned with the queried range. */
+  styles: CellStyle[][];
 }
 
-/** Options for renameSheet */
 export interface RenameSheetOpts {
   file_id: string;
   sheet_id: string;
   new_name: string;
 }
 
-/** Options for deleteSheet */
 export interface DeleteSheetOpts {
   file_id: string;
   sheet_id: string;
 }
 
-/** Options for batchUpdate */
 export interface BatchUpdateOpts {
   file_id: string;
   sheet_id: string;
   action: 'insert_rows' | 'insert_columns' | 'delete_rows' | 'delete_columns';
+  /** Starting row/column index (0-based). */
   index: number;
+  /** Number of rows/columns to insert or delete. */
   count: number;
 }
 
-/** Result of batchUpdate */
 export interface BatchUpdateResult {
   success: boolean;
 }
@@ -146,11 +151,6 @@ export interface BatchUpdateResult {
 // Client
 // ---------------------------------------------------------------------------
 
-/**
- * REST client for Synology Spreadsheet API v3.7+.
- * Does NOT inherit from BaseClient (separate JWT auth, not DSM session).
- * Communicates with Spreadsheet API container at {host}:{spreadsheetPort}.
- */
 export class SpreadsheetClient {
   private readonly authManager: SpreadsheetAuthManager;
   private readonly config: SynologyConfig;
@@ -167,208 +167,151 @@ export class SpreadsheetClient {
     }
   }
 
-  /**
-   * Fetch metadata (sheet names, dimensions) for a spreadsheet file.
-   *
-   * @param file_id - Drive file ID (assumed equal to spreadsheetId in v3.7+).
-   */
+  /** GET /spreadsheets/{id} */
   async getInfo(file_id: string): Promise<SynoSpreadsheetInfo> {
-    const response = await this.fetchJson<SpreadsheetDataV2>(
-      `GET`,
-      `/spreadsheets/${file_id}`,
-    );
-
-    return this.mapSpreadsheetDataToInfo(response);
+    const response = await this.fetchJson<SpreadsheetData>('GET', `/spreadsheets/${encodeURIComponent(file_id)}`);
+    return this.mapSpreadsheetData(response);
   }
 
-  /**
-   * Read cell values from a sheet.
-   *
-   * @param opts - Query options: file_id, optional sheet_name, range, include_formulas.
-   */
+  /** GET /spreadsheets/{id}/values/{range} — sheet name encoded in range as `Sheet1!A1:Z1000`. */
   async getCells(opts: GetCellsOpts): Promise<SynoCellData> {
     const sheetName = opts.sheet_name ?? 'Sheet1';
-    const range = opts.range ?? 'A1:Z1000';
+    const a1 = opts.range ?? 'A1:Z1000';
+    const range = this.qualifiedRange(sheetName, a1);
 
     const response = await this.fetchJson<GetValueResponse>(
-      `GET`,
-      `/spreadsheets/${opts.file_id}/values/${encodeURIComponent(range)}?sheet=${encodeURIComponent(sheetName)}`,
+      'GET',
+      `/spreadsheets/${encodeURIComponent(opts.file_id)}/values/${encodeURIComponent(range)}`,
     );
 
     return {
-      sheet_name: response.sheet,
+      sheet_name: sheetName,
       range: response.range,
-      values: response.values,
+      values: this.cellGridToScalar(response.values),
     };
   }
 
-  /**
-   * Write a 2D array of values into a sheet starting at a given cell.
-   *
-   * @param opts - Target file_id, sheet_name, start_cell, and values grid.
-   */
+  /** PUT /spreadsheets/{id}/values/{range} */
   async setCells(opts: SetCellsOpts): Promise<SetCellsResult> {
-    const range = `${opts.start_cell}:${this.calculateEndCell(opts.start_cell, opts.values)}`;
+    const a1 = `${opts.start_cell}:${this.calculateEndCell(opts.start_cell, opts.values)}`;
+    const range = this.qualifiedRange(opts.sheet_name, a1);
 
     await this.fetchJson<unknown>(
-      `PUT`,
-      `/spreadsheets/${opts.file_id}/values/${encodeURIComponent(range)}?sheet=${encodeURIComponent(opts.sheet_name)}`,
+      'PUT',
+      `/spreadsheets/${encodeURIComponent(opts.file_id)}/values/${encodeURIComponent(range)}`,
       { values: opts.values },
     );
 
     return { success: true };
   }
 
-  /**
-   * Append rows to a sheet using native REST API endpoint (more efficient than setCells).
-   *
-   * @param opts - file_id, sheet_name, start_cell, and values grid.
-   */
+  /** PUT /spreadsheets/{id}/values/{range}/append */
   async appendRows(opts: AppendRowsOpts): Promise<AppendRowsResult> {
-    const range = `${opts.start_cell}:${this.calculateEndCell(opts.start_cell, opts.values)}`;
+    const a1 = `${opts.start_cell}:${this.calculateEndCell(opts.start_cell, opts.values)}`;
+    const range = this.qualifiedRange(opts.sheet_name, a1);
 
     const response = await this.fetchJson<AppendResponse>(
-      `PUT`,
-      `/spreadsheets/${opts.file_id}/values/${encodeURIComponent(range)}/append?sheet=${encodeURIComponent(opts.sheet_name)}`,
+      'PUT',
+      `/spreadsheets/${encodeURIComponent(opts.file_id)}/values/${encodeURIComponent(range)}/append`,
       { values: opts.values },
     );
 
     return {
       success: true,
-      updatedRows: response.updatedRows,
+      updatedRows: response.updates?.updateRows ?? 0,
     };
   }
 
-  /**
-   * Create a new empty spreadsheet file in Drive.
-   *
-   * @param opts - Name, destination folder path, and initial sheet name.
-   */
+  /** POST /spreadsheets/create */
   async create(opts: CreateSpreadsheetOpts): Promise<CreateSpreadsheetResult> {
-    const body = {
-      name: opts.name,
-      destFolderPath: opts.dest_folder_path,
-      initialSheetName: opts.initial_sheet_name,
-    };
-
-    const response = await this.fetchJson<{ id: string; filePath: string }>(
-      `POST`,
-      `/spreadsheets/create`,
-      body,
+    const response = await this.fetchJson<CreateSpreadsheetResponse>(
+      'POST',
+      '/spreadsheets/create',
+      { name: opts.name },
     );
-
-    return {
-      file_id: response.id,
-      file_path: response.filePath,
-    };
+    return { file_id: response.spreadsheetId };
   }
 
-  /**
-   * Add a new sheet tab to an existing spreadsheet.
-   *
-   * @param opts - file_id, new sheet_name, optional position.
-   */
+  /** POST /spreadsheets/{id}/sheet/add */
   async addSheet(opts: AddSheetOpts): Promise<AddSheetResult> {
-    const body: Record<string, string | number> = { name: opts.sheet_name };
-    if (opts.position !== undefined) {
-      body.index = opts.position;
-    }
-
     const response = await this.fetchJson<AddSheetResponse>(
-      `POST`,
-      `/spreadsheets/${opts.file_id}/sheet/add`,
-      body,
+      'POST',
+      `/spreadsheets/${encodeURIComponent(opts.file_id)}/sheet/add`,
+      { sheetName: opts.sheet_name },
     );
-
+    const props = response.addSheet?.properties;
     return {
       success: true,
-      sheet_id: response.sheetId,
+      sheet_id: props?.sheetId ?? '',
+      index: props?.index ?? 0,
     };
   }
 
-  /**
-   * Export a spreadsheet to xlsx or csv, returning the raw buffer and metadata.
-   *
-   * @param opts - file_id, export format, optional sheet_name for CSV.
-   */
+  /** GET /spreadsheets/{id}/xlsx OR GET /spreadsheets/{id}/sheet/csv?sheetId=... */
   async exportFile(opts: ExportFileOpts): Promise<ExportFileResult> {
     const token = await this.authManager.getToken();
-    const endpoint =
-      opts.format === 'xlsx'
-        ? `/spreadsheets/${opts.file_id}/xlsx`
-        : `/spreadsheets/${opts.file_id}/sheet/csv?sheetId=${encodeURIComponent(opts.sheet_name || 'Sheet1')}`;
-
-    const response = await this.fetchBinary(token, endpoint);
-    return response;
+    let endpoint: string;
+    if (opts.format === 'xlsx') {
+      endpoint = `/spreadsheets/${encodeURIComponent(opts.file_id)}/xlsx`;
+    } else {
+      const sheetId = opts.sheet_id ?? 'sh_1';
+      endpoint = `/spreadsheets/${encodeURIComponent(opts.file_id)}/sheet/csv?sheetId=${encodeURIComponent(sheetId)}`;
+    }
+    return this.fetchBinary(token, endpoint);
   }
 
-  /**
-   * Get cell styles for a range.
-   *
-   * @param opts - file_id, sheet_name, and range to query.
-   */
+  /** GET /spreadsheets/{id}/styles/{range} */
   async getStyles(opts: GetStylesOpts): Promise<GetStylesResult> {
+    const range = this.qualifiedRange(opts.sheet_name, opts.range);
     const response = await this.fetchJson<GetStyleResponse>(
-      `GET`,
-      `/spreadsheets/${opts.file_id}/styles/${encodeURIComponent(opts.range)}?sheet=${encodeURIComponent(opts.sheet_name)}`,
+      'GET',
+      `/spreadsheets/${encodeURIComponent(opts.file_id)}/styles/${encodeURIComponent(range)}`,
     );
-
     return {
-      sheet: response.sheet,
       range: response.range,
-      styles: response.styles,
+      styles: (response.rows ?? []).map((row) => row.values ?? []),
     };
   }
 
-  /**
-   * Rename a sheet tab.
-   *
-   * @param opts - file_id, sheet_id, and new_name.
-   */
+  /** POST /spreadsheets/{id}/sheet/rename */
   async renameSheet(opts: RenameSheetOpts): Promise<{ success: boolean }> {
-    await this.fetchJson<unknown>(
-      `POST`,
-      `/spreadsheets/${opts.file_id}/sheet/rename`,
-      { sheetId: opts.sheet_id, name: opts.new_name },
+    await this.fetchJson<RenameSheetResponse>(
+      'POST',
+      `/spreadsheets/${encodeURIComponent(opts.file_id)}/sheet/rename`,
+      { sheetId: opts.sheet_id, sheetName: opts.new_name },
     );
-
     return { success: true };
   }
 
-  /**
-   * Delete a sheet tab.
-   *
-   * @param opts - file_id and sheet_id.
-   */
+  /** POST /spreadsheets/{id}/sheet/delete */
   async deleteSheet(opts: DeleteSheetOpts): Promise<{ success: boolean }> {
     await this.fetchJson<unknown>(
-      `POST`,
-      `/spreadsheets/${opts.file_id}/sheet/delete`,
+      'POST',
+      `/spreadsheets/${encodeURIComponent(opts.file_id)}/sheet/delete`,
       { sheetId: opts.sheet_id },
     );
-
     return { success: true };
   }
 
-  /**
-   * Perform batch operations (insert/delete rows or columns).
-   *
-   * @param opts - file_id, sheet_id, action, index, and count.
-   */
+  /** POST /spreadsheets/{id}/batchUpdate */
   async batchUpdate(opts: BatchUpdateOpts): Promise<BatchUpdateResult> {
-    const body = {
+    const dimension: Dimension = opts.action.endsWith('rows') ? 'ROWS' : 'COLUMNS';
+    const range = {
       sheetId: opts.sheet_id,
-      action: opts.action,
-      index: opts.index,
-      count: opts.count,
+      dimension,
+      startIndex: opts.index,
+      endIndex: opts.index + opts.count,
     };
+    const item: BatchUpdateRequestItem = opts.action.startsWith('insert')
+      ? { insertDimension: { range, inheritFromBefore: true } }
+      : { deleteDimension: { range } };
+    const body: BatchUpdateRequest = { requests: [item] };
 
-    await this.fetchJson<BatchUpdateResult>(
-      `POST`,
-      `/spreadsheets/${opts.file_id}/batchUpdate`,
-      body,
+    await this.fetchJson<unknown>(
+      'POST',
+      `/spreadsheets/${encodeURIComponent(opts.file_id)}/batchUpdate`,
+      body as unknown as Record<string, unknown>,
     );
-
     return { success: true };
   }
 
@@ -376,13 +319,35 @@ export class SpreadsheetClient {
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  /** Build base URL for Spreadsheet API */
   private buildBaseUrl(): string {
     const proto = this.config.spreadsheetHttps ? 'https' : 'http';
     return `${proto}://${this.config.host}:${this.config.spreadsheetPort}`;
   }
 
-  /** Fetch JSON response from API */
+  /** Encode `Sheet1!A1:B2` if a sheet name is provided; otherwise raw range. */
+  private qualifiedRange(sheetName: string | undefined, a1: string): string {
+    if (!sheetName) return a1;
+    return `${sheetName}!${a1}`;
+  }
+
+  /** Coerce CellJSON values into the flat scalar grid the tool layer expects. */
+  private cellGridToScalar(grid: CellJSON2D | undefined): CellValue[][] {
+    if (!grid) return [];
+    return grid.map((row) =>
+      row.map((cell): CellValue => {
+        if (cell === null || cell === undefined) return null;
+        if (typeof cell === 'string' || typeof cell === 'number' || typeof cell === 'boolean') {
+          return cell;
+        }
+        // Rich text: collapse to plain text.
+        if (cell.t === 'r' && Array.isArray(cell.v)) {
+          return cell.v.map((seg) => seg.tx).join('');
+        }
+        return null;
+      }),
+    );
+  }
+
   private async fetchJson<T>(
     method: 'GET' | 'POST' | 'PUT',
     path: string,
@@ -394,13 +359,13 @@ export class SpreadsheetClient {
     const init: Record<string, unknown> = {
       method,
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       signal: AbortSignal.timeout(this.config.requestTimeoutMs),
     };
 
-    if (body) {
+    if (body !== undefined) {
       init.body = JSON.stringify(body);
     }
 
@@ -423,13 +388,13 @@ export class SpreadsheetClient {
         const errorBody = (await response.json()) as Record<string, unknown>;
         if (typeof errorBody.error === 'string') {
           errorMsg = errorBody.error;
-        } else if (typeof errorBody.error_description === 'string') {
-          errorMsg = errorBody.error_description;
+        } else if (typeof errorBody.message === 'string') {
+          errorMsg = errorBody.message;
         }
       } catch {
-        // Failed to parse error response, use HTTP status only
+        // ignore non-JSON error body
       }
-      throw new SynologyMcpError('API_ERROR', errorMsg, undefined, true);
+      throw new SynologyMcpError('API_ERROR', errorMsg, response.status, true);
     }
 
     try {
@@ -439,15 +404,12 @@ export class SpreadsheetClient {
     }
   }
 
-  /** Fetch binary response (for export) */
   private async fetchBinary(token: string, path: string): Promise<ExportFileResult> {
     const url = this.buildBaseUrl() + path;
 
     const init: Record<string, unknown> = {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(this.config.requestTimeoutMs),
     };
 
@@ -474,43 +436,37 @@ export class SpreadsheetClient {
     const mime_type = response.headers.get('content-type') ?? 'application/octet-stream';
 
     const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    return { buffer, file_name, mime_type };
+    return { buffer: Buffer.from(arrayBuffer), file_name, mime_type };
   }
 
-  /** Map REST API response to internal SynoSpreadsheetInfo type */
-  private mapSpreadsheetDataToInfo(data: SpreadsheetDataV2): SynoSpreadsheetInfo {
+  /** Map spec SpreadsheetData -> internal flat SynoSpreadsheetInfo. */
+  private mapSpreadsheetData(data: SpreadsheetData): SynoSpreadsheetInfo {
     return {
       file_id: data.id,
-      name: data.name,
-      sheets: data.sheets.map((sheet) => this.mapSheetDataV2ToSheetInfo(sheet)),
+      name: data.properties?.title ?? '',
+      sheets: (data.sheets ?? []).map((sheet) => this.mapWorksheetData(sheet)),
     };
   }
 
-  /** Map REST API sheet data to internal SynoSheetInfo type */
-  private mapSheetDataV2ToSheetInfo(sheet: SheetDataV2): SynoSheetInfo {
+  private mapWorksheetData(sheet: WorksheetData): SynoSheetInfo {
     return {
-      sheet_id: sheet.sheetId,
-      name: sheet.name,
-      row_count: sheet.rowCount,
-      col_count: sheet.columnCount,
-      hidden: sheet.isHidden,
+      sheet_id: sheet.properties?.sheetId ?? '',
+      name: sheet.properties?.title ?? '',
+      row_count: sheet.rowCount ?? 0,
+      col_count: sheet.colCount ?? 0,
+      hidden: sheet.properties?.hidden ?? false,
     };
   }
 
-  /** Calculate the end cell given a start cell and values grid dimensions */
-  private calculateEndCell(startCell: string, values: Array<Array<unknown>>): string {
-    // Parse start cell (e.g. "A1" -> { col: 1, row: 1 })
+  /** Calculate the end cell given a start cell and values grid dimensions. */
+  private calculateEndCell(startCell: string, values: unknown[][]): string {
     const startMatch = /^([A-Z]+)(\d+)$/.exec(startCell);
     if (!startMatch || startMatch[1] === undefined || startMatch[2] === undefined) {
-      return startCell; // Fallback if unparseable
+      return startCell;
     }
-
     const startCol = this.colNameToIndex(startMatch[1]);
     const startRow = parseInt(startMatch[2], 10);
 
-    // Calculate end position
     const endRow = startRow + values.length - 1;
     const maxCols = Math.max(...values.map((row) => row.length), 1);
     const endCol = startCol + maxCols - 1;
@@ -518,7 +474,7 @@ export class SpreadsheetClient {
     return `${this.indexToColName(endCol)}${endRow}`;
   }
 
-  /** Convert column letter(s) to 0-based index (A=0, Z=25, AA=26) */
+  /** Convert column letter(s) to 0-based index (A=0, Z=25, AA=26). */
   private colNameToIndex(name: string): number {
     let index = 0;
     for (let i = 0; i < name.length; i++) {
@@ -527,7 +483,7 @@ export class SpreadsheetClient {
     return index - 1;
   }
 
-  /** Convert 0-based column index to letter(s) (0=A, 25=Z, 26=AA) */
+  /** Convert 0-based column index to letter(s) (0=A, 25=Z, 26=AA). */
   private indexToColName(index: number): string {
     let name = '';
     let idx = index + 1;

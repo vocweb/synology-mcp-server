@@ -45,7 +45,7 @@ describe('SpreadsheetClient.getCells', () => {
       range: 'A1:D3',
       include_formulas: false,
     });
-    expect(data.range).toBe('A1:D3');
+    expect(data.range).toBe('Sheet1!A1:D3');
   });
 
   it('throws on not-found file_id', async () => {
@@ -80,15 +80,10 @@ describe('SpreadsheetClient.setCells', () => {
 });
 
 describe('SpreadsheetClient.create', () => {
-  it('returns new file_id and file_path', async () => {
+  it('returns new file_id', async () => {
     const client = createTestSpreadsheetClient();
-    const result = await client.create({
-      name: 'NewSheet',
-      dest_folder_path: '/mydrive',
-      initial_sheet_name: 'Sheet1',
-    });
+    const result = await client.create({ name: 'NewSheet' });
     expect(result.file_id).toBe('new-sheet-001');
-    expect(result.file_path).toContain('NewSheet');
   });
 });
 

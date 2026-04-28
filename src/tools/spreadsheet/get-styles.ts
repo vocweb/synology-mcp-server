@@ -28,7 +28,7 @@ export const spreadsheetGetStylesTool: ToolDefinition<typeof inputSchema> = {
       });
 
       return {
-        sheet: result.sheet,
+        sheet: input.sheet_name,
         range: result.range,
         styles: result.styles,
       };

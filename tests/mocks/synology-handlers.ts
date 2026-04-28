@@ -374,61 +374,82 @@ function handlePost(request: Request): Response {
 }
 
 // ---------------------------------------------------------------------------
-// Spreadsheet API v3.7+ REST handlers
+// Spreadsheet REST handlers (OpenAPI 3.3.2 — synology/spreadsheet-api)
 // ---------------------------------------------------------------------------
 
-/** Spreadsheet API auth handler */
+/** POST /spreadsheets/authorize */
 const spreadsheetAuthHandler = http.post('http://nas.local:3000/spreadsheets/authorize', () => {
-  return HttpResponse.json({
-    access_token: 'test-jwt-token-xyz',
-    token_type: 'Bearer',
-    expires_in: 2419200, // 28 days
-  });
+  return HttpResponse.json({ token: 'test-jwt-token-xyz' });
 });
 
-/** Spreadsheet API getInfo handler */
+/** POST /spreadsheets/authorize/token/revoke */
+const spreadsheetRevokeHandler = http.post(
+  'http://nas.local:3000/spreadsheets/authorize/token/revoke',
+  () => HttpResponse.json({ success: true }),
+);
+
+/** GET /spreadsheets/{id} — spec: nested properties, colCount (not columnCount). */
 const spreadsheetGetInfoHandler = http.get('http://nas.local:3000/spreadsheets/:id', ({ params }) => {
   const id = params.id as string;
   if (id === 'sheet-001' || id === 'file123') {
     return HttpResponse.json({
       id,
-      name: 'Budget.osheet',
+      properties: { title: 'Budget.osheet', locale: 'en_US' },
       sheets: [
-        { sheetId: 's1', name: 'Sheet1', rowCount: 10, columnCount: 4, isHidden: false },
-        { sheetId: 's2', name: 'Summary', rowCount: 5, columnCount: 2, isHidden: false },
+        {
+          properties: { title: 'Sheet1', sheetId: 's1', index: 0, hidden: false },
+          rowCount: 10,
+          colCount: 4,
+        },
+        {
+          properties: { title: 'Summary', sheetId: 's2', index: 1, hidden: false },
+          rowCount: 5,
+          colCount: 2,
+        },
       ],
-      createdTime: 1700000000,
-      modifiedTime: 1700000000,
     });
   }
   return HttpResponse.json({ error: 'Not found' }, { status: 404 });
 });
 
-/** Spreadsheet API getCells handler */
-const spreadsheetGetCellsHandler = http.get('http://nas.local:3000/spreadsheets/:id/values/:range', ({ params }) => {
-  if (params.id === 'not-found') {
-    return HttpResponse.json({ error: 'Not found' }, { status: 404 });
-  }
-  return HttpResponse.json({
-    sheet: 'Sheet1',
-    range: 'A1:D3',
-    values: [
-      ['Name', 'Age', 'City', 'Score'],
-      ['Alice', 30, 'NYC', 95],
-      ['Bob', 25, 'LA', 87],
-    ],
-  });
-});
+/** GET /spreadsheets/{id}/values/{range} — spec: { range, majorDimension, values }. */
+const spreadsheetGetCellsHandler = http.get(
+  'http://nas.local:3000/spreadsheets/:id/values/:range',
+  ({ params }) => {
+    if (params.id === 'not-found') {
+      return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    return HttpResponse.json({
+      range: 'Sheet1!A1:D3',
+      majorDimension: 'ROWS',
+      values: [
+        ['Name', 'Age', 'City', 'Score'],
+        ['Alice', 30, 'NYC', 95],
+        ['Bob', 25, 'LA', 87],
+      ],
+    });
+  },
+);
 
-/** Spreadsheet API setCells handler */
-const spreadsheetSetCellsHandler = http.put('http://nas.local:3000/spreadsheets/:id/values/:range', ({ params }) => {
-  if (params.id === 'not-found') {
-    return HttpResponse.json({ error: 'Not found' }, { status: 404 });
-  }
-  return HttpResponse.json({});
-});
+/** PUT /spreadsheets/{id}/values/{range} — echoes back GetValueResponse. */
+const spreadsheetSetCellsHandler = http.put(
+  'http://nas.local:3000/spreadsheets/:id/values/:range',
+  ({ params }) => {
+    if (params.id === 'not-found') {
+      return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    return HttpResponse.json({
+      range: 'Sheet1!A1:B2',
+      majorDimension: 'ROWS',
+      values: [
+        [1, 2],
+        [3, 4],
+      ],
+    });
+  },
+);
 
-/** Spreadsheet API appendRows handler */
+/** PUT /spreadsheets/{id}/values/{range}/append — spec: AppendResponse. */
 const spreadsheetAppendRowsHandler = http.put(
   'http://nas.local:3000/spreadsheets/:id/values/:range/append',
   ({ params }) => {
@@ -436,22 +457,19 @@ const spreadsheetAppendRowsHandler = http.put(
       return HttpResponse.json({ error: 'Not found' }, { status: 404 });
     }
     return HttpResponse.json({
-      updatedRows: 2,
-      updatedColumns: 4,
-      updatedCells: 8,
+      tableRange: 'A1:D6',
+      updates: { updateRange: 'A7:D8', updateRows: 2, updateColumns: 4 },
+      spreadsheetId: params.id,
     });
   },
 );
 
-/** Spreadsheet API create handler */
+/** POST /spreadsheets/create — spec: returns { spreadsheetId } only. */
 const spreadsheetCreateHandler = http.post('http://nas.local:3000/spreadsheets/create', () => {
-  return HttpResponse.json({
-    id: 'new-sheet-001',
-    filePath: '/mydrive/NewSheet.osheet',
-  });
+  return HttpResponse.json({ spreadsheetId: 'new-sheet-001' });
 });
 
-/** Spreadsheet API addSheet handler */
+/** POST /spreadsheets/{id}/sheet/add — spec: { addSheet: { properties: {...} } }. */
 const spreadsheetAddSheetHandler = http.post(
   'http://nas.local:3000/spreadsheets/:id/sheet/add',
   ({ params }) => {
@@ -459,8 +477,9 @@ const spreadsheetAddSheetHandler = http.post(
       return HttpResponse.json({ error: 'Not found' }, { status: 404 });
     }
     return HttpResponse.json({
-      sheetId: 'new-sheet-tab-001',
-      index: 1,
+      addSheet: {
+        properties: { sheetId: 'new-sheet-tab-001', title: 'NewTab', index: 2 },
+      },
     });
   },
 );
@@ -493,54 +512,87 @@ const spreadsheetExportCsvHandler = http.get('http://nas.local:3000/spreadsheets
   });
 });
 
-/** Spreadsheet API getStyles handler */
+/** GET /spreadsheets/{id}/styles/{range} — spec: { range, rows: [{ values: CellStyle[] }] }. */
 const spreadsheetGetStylesHandler = http.get(
   'http://nas.local:3000/spreadsheets/:id/styles/:range',
   () => {
     return HttpResponse.json({
-      sheet: 'Sheet1',
-      range: 'A1:B2',
-      styles: [
-        [
-          { fontName: 'Arial', fontSize: 12, fontWeight: 700, italic: false },
-          { fontName: 'Arial', fontSize: 12, fontWeight: 400, italic: false },
-        ],
-        [
-          { fontName: 'Arial', fontSize: 11, fontWeight: 400, italic: false },
-          { fontName: 'Arial', fontSize: 11, fontWeight: 400, italic: false },
-        ],
+      range: 'Sheet1!A1:B2',
+      rows: [
+        {
+          values: [
+            {
+              effectiveValue: 'Header',
+              formattedValue: 'Header',
+              userEnteredFormat: {
+                textFormat: { bold: true, name: 'Arial', size: 12, color: '000000' },
+                bg: 'fffffe',
+                horizontalAlignment: 'center',
+              },
+              effectiveFormat: {
+                textFormat: { bold: true, name: 'Arial', size: 12, color: '000000' },
+                bg: 'fffffe',
+                horizontalAlignment: 'center',
+              },
+            },
+            {
+              effectiveValue: 'Value',
+              formattedValue: 'Value',
+              userEnteredFormat: { textFormat: { name: 'Arial', size: 12 } },
+              effectiveFormat: { textFormat: { name: 'Arial', size: 12 } },
+            },
+          ],
+        },
+        {
+          values: [
+            {
+              effectiveValue: 1,
+              formattedValue: '1',
+              userEnteredFormat: { textFormat: { name: 'Arial', size: 11 } },
+              effectiveFormat: { textFormat: { name: 'Arial', size: 11 } },
+            },
+            {
+              effectiveValue: 2,
+              formattedValue: '2',
+              userEnteredFormat: { textFormat: { name: 'Arial', size: 11 } },
+              effectiveFormat: { textFormat: { name: 'Arial', size: 11 } },
+            },
+          ],
+        },
       ],
     });
   },
 );
 
-/** Spreadsheet API renameSheet handler */
+/** POST /spreadsheets/{id}/sheet/rename — spec: RenameSheetResponse. */
 const spreadsheetRenameSheetHandler = http.post(
   'http://nas.local:3000/spreadsheets/:id/sheet/rename',
-  () => {
-    return HttpResponse.json({});
+  async ({ params, request }) => {
+    const body = (await request.json()) as { sheetId?: string; sheetName?: string };
+    return HttpResponse.json({
+      spreadsheetId: params.id,
+      sheetId: body.sheetId ?? 'sh_1',
+      sheetName: body.sheetName ?? 'renamed',
+    });
   },
 );
 
-/** Spreadsheet API deleteSheet handler */
+/** POST /spreadsheets/{id}/sheet/delete — spec: DeleteSheetResponse. */
 const spreadsheetDeleteSheetHandler = http.post(
   'http://nas.local:3000/spreadsheets/:id/sheet/delete',
-  () => {
-    return HttpResponse.json({});
-  },
+  ({ params }) => HttpResponse.json({ spreadsheetId: params.id }),
 );
 
-/** Spreadsheet API batchUpdate handler */
+/** POST /spreadsheets/{id}/batchUpdate — spec: empty object. */
 const spreadsheetBatchUpdateHandler = http.post(
   'http://nas.local:3000/spreadsheets/:id/batchUpdate',
-  () => {
-    return HttpResponse.json({});
-  },
+  () => HttpResponse.json({}),
 );
 
-/** All Spreadsheet API v3.7+ handlers */
+/** All Spreadsheet REST handlers. */
 const spreadsheetHandlers = [
   spreadsheetAuthHandler,
+  spreadsheetRevokeHandler,
   spreadsheetGetInfoHandler,
   spreadsheetGetCellsHandler,
   spreadsheetSetCellsHandler,

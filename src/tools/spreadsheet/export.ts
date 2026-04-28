@@ -24,10 +24,22 @@ export const spreadsheetExportTool: ToolDefinition<typeof inputSchema> = {
   inputSchema,
   async handler(input: z.infer<typeof inputSchema>, ctx: ToolContext) {
     try {
+      // CSV export needs a sheetId. If caller passed a sheet_name, resolve it.
+      let sheetId: string | undefined;
+      if (input.format === 'csv') {
+        if (input.sheet_name === undefined) {
+          const info = await ctx.spreadsheetClient.getInfo(input.file_id);
+          sheetId = info.sheets[0]?.sheet_id;
+        } else {
+          const info = await ctx.spreadsheetClient.getInfo(input.file_id);
+          sheetId = info.sheets.find((s) => s.name === input.sheet_name)?.sheet_id;
+        }
+      }
+
       const result = await ctx.spreadsheetClient.exportFile({
         file_id: input.file_id,
         format: input.format,
-        ...(input.sheet_name !== undefined ? { sheet_name: input.sheet_name } : {}),
+        ...(sheetId !== undefined ? { sheet_id: sheetId } : {}),
       });
 
       return {

@@ -152,99 +152,189 @@ export interface SynoCalEvent {
 }
 
 // ============================================================================
-// Synology Spreadsheet API v3.7+ REST API Response Types
+// Synology Spreadsheet API REST Types
+// Matches OpenAPI 3.3.2 (Synology Office package >= 3.6.0;
+// Docker tag synology/spreadsheet-api:3.4.1+ requires Synology Office >= 3.7.0).
 // ============================================================================
 
-/** Sheet metadata from REST API v3.7+ */
-export interface SheetDataV2 {
-  /** Internal sheet ID */
-  sheetId: string;
-  /** Human-readable tab name */
-  name: string;
-  /** Number of rows with data */
-  rowCount: number;
-  /** Number of columns with data */
-  columnCount: number;
-  /** Whether the sheet is hidden */
-  isHidden: boolean;
+/** Cell value: literal or rich-text segment object. */
+export type CellJSON = string | number | boolean | RichTextJSON;
+export type CellJSON2D = CellJSON[][];
+
+/** Style for a single rich-text segment (compact short keys). */
+export interface CompactFontJSON {
+  /** font family */
+  n?: string;
+  /** font size */
+  sz?: number;
+  /** bold */
+  b?: boolean;
+  /** italic */
+  i?: boolean;
+  /** strike-through */
+  s?: boolean;
+  /** underline */
+  u?: boolean;
+  /** color (hex without #) */
+  c?: string;
 }
 
-/** Spreadsheet metadata response from REST API v3.7+ (GET /spreadsheets/{id}) */
-export interface SpreadsheetDataV2 {
-  /** Spreadsheet ID from REST API */
-  id: string;
-  /** Display name of the spreadsheet */
-  name: string;
-  /** Ordered list of sheets in the workbook */
-  sheets: SheetDataV2[];
-  /** Creation timestamp (Unix seconds) */
-  createdTime?: number;
-  /** Last modification timestamp (Unix seconds) */
-  modifiedTime?: number;
+export interface RichTextRunJSON {
+  /** segment text */
+  tx: string;
+  /** segment style */
+  s?: CompactFontJSON;
 }
 
-/** Cell values response from REST API v3.7+ (GET /spreadsheets/{id}/values/{range}) */
-export interface GetValueResponse {
-  /** Name of the sheet queried */
-  sheet: string;
-  /** A1-notation range actually returned */
-  range: string;
-  /** 2D grid of cell values; outer = rows, inner = columns */
-  values: Array<Array<string | number | boolean | null>>;
+/** Rich text cell (`{ t: 'r', v: [...] }`). */
+export interface RichTextJSON {
+  t: 'r';
+  v: RichTextRunJSON[];
 }
 
-/** Append/set values response from REST API v3.7+ (PUT /spreadsheets/{id}/values/{range}/append) */
-export interface AppendResponse {
-  /** Number of rows updated */
-  updatedRows: number;
-  /** Number of columns updated */
-  updatedColumns: number;
-  /** Total cells updated */
-  updatedCells: number;
-}
+/** Sheet ID like `sh_1` (suffix from URL `#tid=N`). */
+export type SheetId = string;
+export type Dimension = 'ROWS' | 'COLUMNS';
 
-/** Add sheet response from REST API v3.7+ (POST /spreadsheets/{id}/sheet/add) */
-export interface AddSheetResponse {
-  /** ID of the newly created sheet */
-  sheetId: string;
-  /** Index position of the new sheet */
+/** Sheet tab properties. */
+export interface SheetProperties {
+  title: string;
+  sheetId: SheetId;
   index: number;
+  hidden?: boolean;
 }
 
-/** Cell styles response from REST API v3.7+ (GET /spreadsheets/{id}/styles/{range}) */
-export interface GetStyleResponse {
-  /** Name of the sheet queried */
-  sheet: string;
-  /** A1-notation range queried */
-  range: string;
-  /** 2D grid of cell styles; outer = rows, inner = columns */
-  styles: Array<Array<CellStyle | null>>;
+/** Worksheet payload as returned inside `SpreadsheetData.sheets[]`. */
+export interface WorksheetData {
+  properties: SheetProperties;
+  rowCount: number;
+  colCount: number;
+  fixedColumnLeft?: number;
+  fixedRowTop?: number;
+  /** Each entry is a 4-tuple [row1, col1, row2, col2]. */
+  mergeCells?: number[][];
 }
 
-/** Individual cell style definition */
-export interface CellStyle {
-  /** Font name, e.g. "Arial", "Times New Roman" */
-  fontName?: string;
-  /** Font size in points */
-  fontSize?: number;
-  /** Font weight: normal (400), bold (700), etc. */
-  fontWeight?: number;
-  /** True if italic */
+/** Workbook-level properties. */
+export interface SpreadsheetProperties {
+  title: string;
+  locale?: string;
+}
+
+/** GET /spreadsheets/{id} response. */
+export interface SpreadsheetData {
+  id: string;
+  properties: SpreadsheetProperties;
+  sheets: WorksheetData[];
+}
+
+/** Number format. */
+export interface NumberFormat {
+  type?: 'DEFAULT' | 'DATE_TIME' | 'DATE' | 'TIME' | 'TEXT' | 'DURATION';
+  pattern?: string;
+}
+
+export interface TextFormat {
+  bold?: boolean;
   italic?: boolean;
-  /** True if underline */
   underline?: boolean;
-  /** True if strikethrough */
-  strikethrough?: boolean;
-  /** Hex color code (e.g. "#FF0000" for red) */
-  fontColor?: string;
-  /** Background color hex code */
-  backgroundColor?: string;
-  /** Horizontal alignment: left, center, right, justify */
-  horizontalAlignment?: 'left' | 'center' | 'right' | 'justify';
-  /** Vertical alignment: top, middle, bottom */
-  verticalAlignment?: 'top' | 'middle' | 'bottom';
-  /** Number format code, e.g. "0.00", "@" for text */
-  numberFormat?: string;
-  /** Whether text wraps in cell */
-  wrapText?: boolean;
+  strike?: boolean;
+  color?: string;
+  name?: string;
+  size?: number;
+}
+
+export interface CellFormat {
+  numberFormat?: NumberFormat | null;
+  verticalAlignment?: 'top' | 'middle' | 'bottom' | null;
+  textFormat?: TextFormat;
+  /** Background color (hex without #). */
+  bg?: string | null;
+  quotePrefix?: boolean;
+  horizontalAlignment?: 'left' | 'center' | 'right' | null;
+  wrapStrategy?: 'wrap' | 'clip' | null;
+  /** Border colors top/right/bottom/left. */
+  borders?: Array<string | null> | null;
+}
+
+export interface FormulaError {
+  error: string;
+}
+
+/** Cell style entry as returned by GET /styles/{range}. */
+export interface CellStyle {
+  userEnteredValue?: CellJSON;
+  effectiveValue?: string | number | boolean | FormulaError;
+  formattedValue?: string;
+  userEnteredFormat?: CellFormat;
+  effectiveFormat?: CellFormat;
+  hyperlink?: string;
+}
+
+/** GET /spreadsheets/{id}/values/{range}. */
+export interface GetValueResponse {
+  range: string;
+  majorDimension: Dimension;
+  values: CellJSON2D;
+}
+
+/** PUT /spreadsheets/{id}/values/{range}/append. */
+export interface AppendResponse {
+  tableRange: string;
+  updates: {
+    updateRange: string;
+    updateRows: number;
+    updateColumns: number;
+  };
+  spreadsheetId: string;
+}
+
+/** POST /spreadsheets/{id}/sheet/add. */
+export interface AddSheetResponse {
+  addSheet: {
+    properties: {
+      sheetId: SheetId;
+      title: string;
+      index: number;
+    };
+  };
+}
+
+/** POST /spreadsheets/{id}/sheet/rename. */
+export interface RenameSheetResponse {
+  spreadsheetId: string;
+  sheetId: SheetId;
+  sheetName: string;
+}
+
+/** POST /spreadsheets/{id}/sheet/delete. */
+export interface DeleteSheetResponse {
+  spreadsheetId: string;
+}
+
+/** POST /spreadsheets/create. */
+export interface CreateSpreadsheetResponse {
+  spreadsheetId: string;
+}
+
+/** GET /spreadsheets/{id}/styles/{range}. */
+export interface GetStyleResponse {
+  range: string;
+  rows: Array<{ values: CellStyle[] }>;
+}
+
+/** POST /spreadsheets/{id}/batchUpdate – single request item. */
+export type BatchUpdateRequestItem =
+  | { insertDimension: { range: DimensionRange; inheritFromBefore?: boolean } }
+  | { deleteDimension: { range: DimensionRange } };
+
+export interface DimensionRange {
+  sheetId: SheetId;
+  dimension: Dimension;
+  startIndex: number;
+  endIndex: number;
+}
+
+export interface BatchUpdateRequest {
+  requests: BatchUpdateRequestItem[];
 }

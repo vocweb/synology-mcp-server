@@ -1,7 +1,8 @@
 /**
- * Synology Spreadsheet API v3.7+ JWT authentication manager.
- * Handles login via REST API, token caching, and logout.
- * Per spec §5 (Spreadsheet auth) — separate from DSM session auth.
+ * Synology Spreadsheet API JWT authentication manager.
+ * OpenAPI 3.3.2 — POST /spreadsheets/authorize, POST /spreadsheets/authorize/token/revoke.
+ * Separate from DSM session auth: the JWT is tied to a DSM session via the
+ * `host` body field, but is issued/served by the synology/spreadsheet-api container.
  */
 
 import { Agent } from 'undici';
@@ -10,24 +11,27 @@ import { TokenCache } from './token-cache.js';
 import { AuthError, NetworkError } from '../errors.js';
 import { httpFetch, type FetchResponse } from '../utils/http-fetch.js';
 
-/** Spreadsheet API response envelope */
-interface SpreadsheetAuthResponse {
-  access_token?: string;
-  token_type?: string;
-  expires_in?: number;
+/** POST /spreadsheets/authorize success body. */
+interface AuthorizeOkBody {
+  token: string;
+}
+
+interface AuthorizeErrorBody {
   error?: string;
-  error_description?: string;
+  message?: string;
 }
 
 /**
- * Manages Synology Spreadsheet API v3.7+ JWT token lifecycle.
+ * Manages Synology Spreadsheet API JWT token lifecycle.
  *
  * - Logs in via `POST /spreadsheets/authorize` and caches the returned JWT.
  * - Returns cached token on subsequent `getToken()` calls until TTL elapses.
  * - Supports explicit invalidation (on 401 responses) followed by re-login.
  * - Uses an `undici.Agent` to bypass TLS validation when config.ignoreCert is true.
  *
- * Token TTL: Typically 28 days (2419200 seconds). Falls back to 23 hours if not specified.
+ * Token TTL: 28 days per spec — token is tied to the DSM session, so it
+ * also becomes invalid if DSM restarts or the user is forcibly logged out.
+ * The server does not return an explicit expiry, so we cache locally for 28 days.
  */
 export class SpreadsheetAuthManager {
   private readonly cache: TokenCache;
@@ -110,7 +114,7 @@ export class SpreadsheetAuthManager {
     const body = JSON.stringify({
       username: this.config.username,
       password: this.config.password,
-      host: this.config.host,
+      host: this.buildDsmHostField(),
       protocol: this.config.https ? 'https' : 'http',
     });
 
@@ -128,25 +132,42 @@ export class SpreadsheetAuthManager {
       throw new NetworkError(`Failed to reach Synology Spreadsheet API: ${msg}`);
     }
 
-    let payload: SpreadsheetAuthResponse;
+    if (response.status === 401 || !response.ok) {
+      let detail = `HTTP ${response.status}`;
+      try {
+        const errBody = (await response.json()) as AuthorizeErrorBody;
+        detail = errBody.error || errBody.message || detail;
+      } catch {
+        // ignore
+      }
+      throw new AuthError(`Spreadsheet API auth failed: ${detail}`);
+    }
+
+    let payload: AuthorizeOkBody;
     try {
-      payload = (await response.json()) as SpreadsheetAuthResponse;
+      payload = (await response.json()) as AuthorizeOkBody;
     } catch {
       throw new NetworkError('Synology Spreadsheet API returned non-JSON response');
     }
 
-    const token = payload.access_token;
-    if (!token) {
-      const error = payload.error_description || payload.error || 'Unknown error';
-      throw new AuthError(`Spreadsheet API auth failed: ${error}`);
+    if (!payload.token) {
+      throw new AuthError('Spreadsheet API auth failed: empty token in response');
     }
 
-    // Use specified TTL or fall back to 28 days; convert seconds to milliseconds
-    const ttlSeconds = payload.expires_in ?? (SpreadsheetAuthManager.DEFAULT_SPREADSHEET_TTL_MS / 1000);
-    const ttlMs = ttlSeconds * 1000;
+    this.cache.set(payload.token, SpreadsheetAuthManager.DEFAULT_SPREADSHEET_TTL_MS);
+    return payload.token;
+  }
 
-    this.cache.set(token, ttlMs);
-    return token;
+  /**
+   * DSM host field for the authorize body. Per spec, must include port if
+   * non-default for the protocol. We always include it to be safe.
+   * Examples: "office.synology.com", "test.local:5001".
+   */
+  private buildDsmHostField(): string {
+    const isDefault =
+      (this.config.https && this.config.port === 443) ||
+      (!this.config.https && this.config.port === 80);
+    return isDefault ? this.config.host : `${this.config.host}:${this.config.port}`;
   }
 
   /** Builds the base URL for the Spreadsheet API container. */
