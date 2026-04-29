@@ -9,6 +9,7 @@ import type { DriveClient } from '../clients/drive-client.js';
 import type { SpreadsheetClient } from '../clients/spreadsheet-client.js';
 import type { MailPlusClient } from '../clients/mailplus-client.js';
 import type { CalendarClient } from '../clients/calendar-client.js';
+import type { SpreadsheetIdCache } from '../cache/spreadsheet-id-cache.js';
 
 /** Runtime context injected into every tool handler call. */
 export interface ToolContext {
@@ -20,6 +21,8 @@ export interface ToolContext {
   mailplusClient: MailPlusClient;
   /** Authenticated Calendar client; available when calendar feature is enabled. */
   calendarClient: CalendarClient;
+  /** Local cache mapping spreadsheet name → alphanumeric Spreadsheet ID. */
+  spreadsheetIdCache: SpreadsheetIdCache;
 }
 
 /** Union of all possible non-success responses a handler may return. */

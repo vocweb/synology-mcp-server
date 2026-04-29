@@ -105,7 +105,7 @@ async function ssRequest(method, path, { body, raw } = {}) {
   });
 
   await step('Create new spreadsheet', async () => {
-    const body = await ssRequest('POST', '/spreadsheets', {
+    const body = await ssRequest('POST', '/spreadsheets/create', {
       body: { name: `smoke-${Date.now()}` },
     });
     if (!body?.spreadsheetId) throw new Error(`No spreadsheetId: ${JSON.stringify(body)}`);
@@ -148,7 +148,7 @@ async function ssRequest(method, path, { body, raw } = {}) {
   });
 
   await step('Add sheet', async () => {
-    const body = await ssRequest('POST', `/spreadsheets/${encodeURIComponent(fileId)}/sheets`, {
+    const body = await ssRequest('POST', `/spreadsheets/${encodeURIComponent(fileId)}/sheet/add`, {
       body: { sheetName: 'Smoke2' },
     });
     if (!body?.addSheet?.properties?.sheetId) {
@@ -159,7 +159,7 @@ async function ssRequest(method, path, { body, raw } = {}) {
   await step('Export xlsx', async () => {
     const buf = await ssRequest(
       'GET',
-      `/spreadsheets/${encodeURIComponent(fileId)}/export?format=xlsx`,
+      `/spreadsheets/${encodeURIComponent(fileId)}/xlsx`,
       { raw: true },
     );
     if (!buf?.length) throw new Error('Empty xlsx');

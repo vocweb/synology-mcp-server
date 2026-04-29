@@ -98,3 +98,4 @@ worktrees/
 # Generated OpenCode backup from scripts/generate-opencode.py --force
 .opencode.backup/
 
+data/

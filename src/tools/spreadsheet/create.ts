@@ -20,6 +20,7 @@ export const spreadsheetCreateTool: ToolDefinition<typeof inputSchema> = {
   async handler(input: z.infer<typeof inputSchema>, ctx: ToolContext) {
     try {
       const result = await ctx.spreadsheetClient.create({ name: input.name });
+      await ctx.spreadsheetIdCache.register(input.name, null, result.file_id, 'create');
       return { success: true, file_id: result.file_id };
     } catch (err) {
       return toMcpError(err);
