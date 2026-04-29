@@ -140,7 +140,18 @@ export class SpreadsheetAuthManager {
       } catch {
         // ignore
       }
-      throw new AuthError(`Spreadsheet API auth failed: ${detail}`);
+      // 401 from the Spreadsheet container almost always means the container's
+      // own back-call to DSM was rejected — surface the diagnostic vector so
+      // operators don't chase ghosts in the MCP layer.
+      const dsmTarget = `${this.config.https ? 'https' : 'http'}://${this.buildDsmHostField()}`;
+      const hint =
+        response.status === 401
+          ? ` — Spreadsheet container could not authenticate '${this.config.username}' against DSM at ${dsmTarget}. ` +
+            `Common causes: (1) wrong DSM credentials, (2) 2FA account without an app-specific password ` +
+            `(the Spreadsheet authorize endpoint does not accept OTP), (3) the container cannot reach DSM at ` +
+            `that URL (TLS / port / firewall), (4) DSM auto-block triggered after repeated failed logins.`
+          : '';
+      throw new AuthError(`Spreadsheet API auth failed: ${detail}${hint}`);
     }
 
     let payload: AuthorizeOkBody;
@@ -173,6 +184,6 @@ export class SpreadsheetAuthManager {
   /** Builds the base URL for the Spreadsheet API container. */
   private buildBaseUrl(): string {
     const proto = this.config.spreadsheetHttps ? 'https' : 'http';
-    return `${proto}://${this.config.host}:${this.config.spreadsheetPort}`;
+    return `${proto}://${this.config.spreadsheetHost}:${this.config.spreadsheetPort}`;
   }
 }

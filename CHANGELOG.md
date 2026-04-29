@@ -10,6 +10,20 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ---
 
+## [0.4.3] - 2026-04-29
+
+### Fixed — Spreadsheet auth diagnostics & env-var consistency
+- Spreadsheet API endpoint now configurable via `SYNO_SS_HOST` (defaults to `SYNO_HOST`); previously the host was hardcoded to `SYNO_HOST` with no override
+- Renamed env vars to a single canonical naming: `SYNO_SS_HOST` / `SYNO_SS_PORT` / `SYNO_SS_HTTPS` (matches `scripts/smoke-spreadsheet.mjs`)
+- Removed undocumented `SYNO_SPREADSHEET_PORT` / `SYNO_SPREADSHEET_HTTPS` — these were silently ignored by `claude mcp add` setups using `SYNO_SS_*`
+- Auth-failure error message now lists the four common 401 causes (wrong creds, 2FA without app password, container cannot reach DSM, DSM auto-block) and prints the DSM URL the Spreadsheet container is reaching
+- Added 2FA app-password caveat to `.env.example` (the `/spreadsheets/authorize` endpoint does not accept OTP)
+
+### Migration
+- If you previously set `SYNO_SPREADSHEET_PORT` / `SYNO_SPREADSHEET_HTTPS`, rename them to `SYNO_SS_PORT` / `SYNO_SS_HTTPS`. Defaults (`3000` / `false`) are unchanged.
+
+---
+
 ## [0.3.3] - 2026-04-27
 
 ### Changed — Documentation restructure

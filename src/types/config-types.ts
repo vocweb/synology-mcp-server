@@ -23,6 +23,8 @@ export interface SynologyConfig {
   tokenTtlMs: number;
   /** HTTP request timeout in milliseconds (default 30000) */
   requestTimeoutMs: number;
+  /** Spreadsheet API host (defaults to `host` when not overridden) */
+  spreadsheetHost: string;
   /** Spreadsheet API Docker container port (v3.7+ REST API, default 3000) */
   spreadsheetPort: number;
   /** Use HTTPS for Spreadsheet API (usually false for local Docker container) */

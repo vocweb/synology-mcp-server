@@ -22,6 +22,7 @@ export const TEST_CONFIG: SynologyConfig = {
   password: 'password',
   tokenTtlMs: 3_600_000,
   requestTimeoutMs: 5_000,
+  spreadsheetHost: 'nas.local',
   spreadsheetPort: 3000,
   spreadsheetHttps: false,
 };
