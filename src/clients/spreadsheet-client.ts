@@ -321,7 +321,7 @@ export class SpreadsheetClient {
 
   private buildBaseUrl(): string {
     const proto = this.config.spreadsheetHttps ? 'https' : 'http';
-    return `${proto}://${this.config.host}:${this.config.spreadsheetPort}`;
+    return `${proto}://${this.config.spreadsheetHost}:${this.config.spreadsheetPort}`;
   }
 
   /** Encode `Sheet1!A1:B2` if a sheet name is provided; otherwise raw range. */
