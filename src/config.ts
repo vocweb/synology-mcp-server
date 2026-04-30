@@ -66,6 +66,30 @@ const AppConfigSchema = z.object({
   SYNO_SS_PORT: envInt(3000),
   SYNO_SS_HTTPS: envBool(false),
 
+  // DSM back-channel used by the Spreadsheet container to validate
+  // credentials (the `host` / `protocol` fields in /spreadsheets/authorize).
+  // Independent from SYNO_HOST/PORT/HTTPS so you can keep the MCP→DSM
+  // connection on HTTPS while pointing the container's back-call at
+  // DSM's HTTP port (common when the container rejects DSM's self-signed
+  // cert and you cannot install the CA inside it). Each field falls back
+  // to the matching SYNO_* value when unset.
+  SYNO_SS_DSM_HOST: z.string().trim().optional(),
+  SYNO_SS_DSM_PORT: z
+    .union([z.string(), z.number(), z.undefined()])
+    .transform((v): number | undefined => {
+      if (v === undefined || v === '') return undefined;
+      if (typeof v === 'number') return v;
+      const n = parseInt(v, 10);
+      return Number.isNaN(n) ? undefined : n;
+    }),
+  SYNO_SS_DSM_HTTPS: z
+    .union([z.string(), z.boolean(), z.undefined()])
+    .transform((v): boolean | undefined => {
+      if (v === undefined || v === '') return undefined;
+      if (typeof v === 'boolean') return v;
+      return v.trim().toLowerCase() === 'true';
+    }),
+
   // Feature flags
   SYNO_ENABLE_DRIVE: envBool(true),
   SYNO_ENABLE_SPREADSHEET: envBool(true),
@@ -147,6 +171,17 @@ export function loadConfig(): AppConfig {
   const spreadsheetHost =
     env.SYNO_SS_HOST !== undefined && env.SYNO_SS_HOST !== '' ? env.SYNO_SS_HOST : env.SYNO_HOST;
 
+  // Spreadsheet container's DSM back-channel — falls back to DSM config when
+  // the SS-specific override is unset. Lets operators point the container at
+  // DSM's HTTP port to bypass self-signed-cert rejection without weakening
+  // the MCP→DSM TLS posture.
+  const spreadsheetDsmHost =
+    env.SYNO_SS_DSM_HOST !== undefined && env.SYNO_SS_DSM_HOST !== ''
+      ? env.SYNO_SS_DSM_HOST
+      : env.SYNO_HOST;
+  const spreadsheetDsmPort = env.SYNO_SS_DSM_PORT ?? env.SYNO_PORT;
+  const spreadsheetDsmHttps = env.SYNO_SS_DSM_HTTPS ?? env.SYNO_HTTPS;
+
   return {
     synology: {
       host: env.SYNO_HOST,
@@ -161,6 +196,9 @@ export function loadConfig(): AppConfig {
       spreadsheetHost,
       spreadsheetPort: env.SYNO_SS_PORT,
       spreadsheetHttps: env.SYNO_SS_HTTPS,
+      spreadsheetDsmHost,
+      spreadsheetDsmPort,
+      spreadsheetDsmHttps,
     },
     mcp: {
       transport: env.MCP_TRANSPORT,

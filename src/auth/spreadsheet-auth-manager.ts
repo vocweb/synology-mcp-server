@@ -115,7 +115,7 @@ export class SpreadsheetAuthManager {
       username: this.config.username,
       password: this.config.password,
       host: this.buildDsmHostField(),
-      protocol: this.config.https ? 'https' : 'http',
+      protocol: this.config.spreadsheetDsmHttps ? 'https' : 'http',
     });
 
     let response: FetchResponse;
@@ -142,14 +142,19 @@ export class SpreadsheetAuthManager {
       }
       // 401 from the Spreadsheet container almost always means the container's
       // own back-call to DSM was rejected — surface the diagnostic vector so
-      // operators don't chase ghosts in the MCP layer.
-      const dsmTarget = `${this.config.https ? 'https' : 'http'}://${this.buildDsmHostField()}`;
+      // operators don't chase ghosts in the MCP layer. Listed in observed
+      // frequency: TLS verify failure (the container ships without DSM's
+      // self-signed CA) is the most common in homelab setups.
+      const dsmTarget = `${this.config.spreadsheetDsmHttps ? 'https' : 'http'}://${this.buildDsmHostField()}`;
       const hint =
         response.status === 401
           ? ` — Spreadsheet container could not authenticate '${this.config.username}' against DSM at ${dsmTarget}. ` +
-            `Common causes: (1) wrong DSM credentials, (2) 2FA account without an app-specific password ` +
-            `(the Spreadsheet authorize endpoint does not accept OTP), (3) the container cannot reach DSM at ` +
-            `that URL (TLS / port / firewall), (4) DSM auto-block triggered after repeated failed logins.`
+            `Common causes (most frequent first): ` +
+            `(1) container rejects DSM's self-signed TLS cert — point SYNO_SS_DSM_HTTPS=false / SYNO_SS_DSM_PORT=<DSM HTTP port> to back-call over HTTP; ` +
+            `(2) the container cannot reach DSM at that URL (Docker network / firewall / wrong host); ` +
+            `(3) DSM auto-block triggered against the container's source IP — unblock and whitelist the Docker subnet; ` +
+            `(4) the user lacks Synology Office / Spreadsheet privilege (Control Panel → Application Privileges); ` +
+            `(5) wrong DSM credentials. NOTE: the /spreadsheets/authorize endpoint does not accept OTP — for 2FA accounts, use a dedicated service account without 2FA.`
           : '';
       throw new AuthError(`Spreadsheet API auth failed: ${detail}${hint}`);
     }
@@ -172,13 +177,17 @@ export class SpreadsheetAuthManager {
   /**
    * DSM host field for the authorize body. Per spec, must include port if
    * non-default for the protocol. We always include it to be safe.
+   * Uses the SS-specific DSM back-channel config so operators can route
+   * the container's back-call through DSM's HTTP port without touching
+   * the MCP→DSM HTTPS connection.
    * Examples: "office.synology.com", "test.local:5001".
    */
   private buildDsmHostField(): string {
-    const isDefault =
-      (this.config.https && this.config.port === 443) ||
-      (!this.config.https && this.config.port === 80);
-    return isDefault ? this.config.host : `${this.config.host}:${this.config.port}`;
+    const host = this.config.spreadsheetDsmHost;
+    const port = this.config.spreadsheetDsmPort;
+    const https = this.config.spreadsheetDsmHttps;
+    const isDefault = (https && port === 443) || (!https && port === 80);
+    return isDefault ? host : `${host}:${port}`;
   }
 
   /** Builds the base URL for the Spreadsheet API container. */

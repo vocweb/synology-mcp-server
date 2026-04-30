@@ -10,6 +10,30 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ---
 
+## [0.4.4] - 2026-04-30
+
+### Added — Independent DSM back-channel for the Spreadsheet container
+- New env vars `SYNO_SS_DSM_HOST` / `SYNO_SS_DSM_PORT` / `SYNO_SS_DSM_HTTPS` control the URL the Spreadsheet container uses to back-call DSM (the `host` / `protocol` fields in `/spreadsheets/authorize`). Each falls back to the matching `SYNO_*` value when unset, so existing setups keep working.
+- New `SynologyConfig` fields: `spreadsheetDsmHost`, `spreadsheetDsmPort`, `spreadsheetDsmHttps`.
+
+### Why
+The `synology/spreadsheet-api` Docker image ships without DSM's self-signed CA, so HTTPS back-calls to a homelab DSM fail TLS verification and the container returns `401 Unauthorized` even when credentials are correct. Previously the back-call URL was hard-wired to `SYNO_HOST/PORT/HTTPS`, forcing operators to choose between (a) downgrading the entire MCP→DSM connection to HTTP or (b) installing a CA inside the container. With this change, only the container's back-call is downgraded to HTTP — MCP→DSM stays on HTTPS as configured.
+
+### Fixed — Auth-failure error hint
+- Reordered 401 root-cause hint by observed frequency (TLS verify first, not 2FA).
+- Removed incorrect references to "DSM Application Password" — DSM has no such feature; the previous hint sent operators chasing a menu that does not exist.
+- Hint now points operators at the new `SYNO_SS_DSM_*` knobs as the primary fix.
+
+### Documentation
+- `.env.example`: documented all three `SYNO_SS_DSM_*` vars and rewrote the 401 troubleshooting section.
+- `troubleshooting.md`: new "Spreadsheet `/spreadsheets/authorize` Returns 401" section with diagnose/fix recipe; corrected 2FA guidance (no Application Password feature in DSM).
+- `docs/project/synology-office-mcp-spec.md`: added `SYNO_SS_*` block to env-var reference and updated `SynologyConfig` schema.
+
+### Migration
+- No breaking changes. Setups that worked previously continue to work — the new vars default to the matching `SYNO_*` values. If you were hitting `401` on `/spreadsheets/authorize` with HTTPS DSM, set `SYNO_SS_DSM_HTTPS=false` and `SYNO_SS_DSM_PORT=<DSM HTTP port>`.
+
+---
+
 ## [0.4.3] - 2026-04-29
 
 ### Fixed — Spreadsheet auth diagnostics & env-var consistency

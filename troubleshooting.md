@@ -17,7 +17,7 @@ When a Synology API call fails, the error includes a numeric `synoCode`. Common 
 | `401` | Guest account disabled | Enable the account in DSM Control Panel > User |
 | `403` | Permission denied | User lacks permission for this operation; check DSM user privileges |
 | `404` | File not found | Path does not exist in Drive; verify with `drive_list_files` |
-| `406` | OTP code required | 2FA is enabled; set `SYNO_OTP_CODE` or create an app-specific password |
+| `406` | OTP code required | 2FA is enabled; set `SYNO_OTP_CODE`, or create a dedicated service account without 2FA (DSM has no "Application Password" feature) |
 
 ---
 
@@ -99,8 +99,48 @@ node dist/index.js
 ## Authentication Loop / Repeated Login Failures
 
 1. Verify credentials manually: open `https://YOUR_NAS:5001` in a browser and log in
-2. If 2FA is active, use an **app-specific password** (DSM Control Panel > User > Account > App Passwords) instead of `SYNO_OTP_CODE`
+2. If 2FA is active, prefer a dedicated DSM service account **without 2FA enabled** — DSM does NOT offer "Application Passwords" despite what some third-party docs imply, and `SYNO_OTP_CODE` only handles the initial login (and not at all for the Spreadsheet container, which rejects OTP)
 3. Check `LOG_LEVEL=debug` output for the exact error code returned by `SYNO.API.Auth`
+
+---
+
+## Spreadsheet `/spreadsheets/authorize` Returns 401
+
+**Symptom:** Calling the Spreadsheet container's authorize endpoint (directly via curl, or indirectly through `spreadsheet_*` tools) returns `401 Unauthorized` even though the same credentials log into DSM successfully.
+
+**Cause:** The Spreadsheet container makes its OWN back-call to DSM to validate the credentials. That back-call — not the MCP→DSM connection — is what fails. Most common reason in homelab setups: the container ships without DSM's self-signed CA, so HTTPS verify fails.
+
+**Diagnose:**
+
+```bash
+# 1. Confirm credentials work against DSM directly:
+curl -k "https://DSM_HOST:DSM_HTTPS_PORT/webapi/entry.cgi?api=SYNO.API.Auth&version=6&method=login&account=USER&passwd=PASS"
+# Expect: {"data":{...},"success":true}
+
+# 2. Confirm container can reach DSM:
+docker exec <ss-container> sh -c "curl -kv 'https://DSM_HOST:DSM_HTTPS_PORT/webapi/entry.cgi?api=SYNO.API.Auth&version=6&method=login&account=USER&passwd=PASS'"
+
+# 3. Test the authorize endpoint with HTTP back-channel:
+curl -X POST "http://SS_HOST:3000/spreadsheets/authorize" \
+  -H "content-type: application/json" \
+  -d '{"username":"USER","password":"PASS","host":"DSM_HOST:DSM_HTTP_PORT","protocol":"http"}'
+# If THIS succeeds while https + DSM HTTPS port fails → confirms TLS-verify issue.
+```
+
+**Fix:** Point the container's back-call at DSM's HTTP port:
+
+```env
+SYNO_SS_DSM_HTTPS=false
+SYNO_SS_DSM_PORT=5000   # or your DSM HTTP port
+```
+
+These settings only affect the container's back-call; `SYNO_HTTPS` / `SYNO_PORT` (MCP→DSM) stay HTTPS as usual.
+
+**Other 401 causes (in order):**
+1. Docker bridge subnet cannot reach DSM (firewall) — check DSM Control Panel → Security → Firewall, allow `172.17.0.0/16`
+2. DSM auto-block hit the container IP — Control Panel → Security → Account → Block List, unblock + whitelist Docker subnet
+3. User lacks Synology Office privilege — Control Panel → Application Privileges → Synology Office
+4. 2FA-enabled account — endpoint does not accept OTP; use a dedicated non-2FA service account
 
 ---
 
