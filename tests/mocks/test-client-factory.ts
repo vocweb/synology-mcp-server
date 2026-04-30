@@ -25,6 +25,9 @@ export const TEST_CONFIG: SynologyConfig = {
   spreadsheetHost: 'nas.local',
   spreadsheetPort: 3000,
   spreadsheetHttps: false,
+  spreadsheetDsmHost: 'nas.local',
+  spreadsheetDsmPort: 5000,
+  spreadsheetDsmHttps: false,
 };
 
 /** Create a DriveClient backed by a real AuthManager (auth is mocked via MSW). */

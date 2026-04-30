@@ -29,6 +29,22 @@ export interface SynologyConfig {
   spreadsheetPort: number;
   /** Use HTTPS for Spreadsheet API (usually false for local Docker container) */
   spreadsheetHttps: boolean;
+  /**
+   * DSM host the Spreadsheet container should back-call to validate
+   * credentials (sent as `host` field in `/spreadsheets/authorize` body).
+   * Defaults to `host` (DSM) when not overridden — useful when the
+   * container cannot verify DSM's TLS cert and you must point it at
+   * DSM's HTTP port instead.
+   */
+  spreadsheetDsmHost: string;
+  /** DSM port for the Spreadsheet container's back-call (defaults to `port`) */
+  spreadsheetDsmPort: number;
+  /**
+   * Use HTTPS for the Spreadsheet container's DSM back-call
+   * (defaults to `https`). Set false when the container rejects DSM's
+   * self-signed cert and you cannot install the CA inside it.
+   */
+  spreadsheetDsmHttps: boolean;
 }
 
 /** MCP server transport configuration */
