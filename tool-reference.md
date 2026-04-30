@@ -1,6 +1,6 @@
 # Tool Reference
 
-All 32 MCP tools exposed by synology-office-mcp.
+All 37 MCP tools exposed by synology-office-mcp.
 
 `confirm` column: tools marked **yes** require `"confirm": true` in the input or they return an error without performing the action.
 
@@ -24,16 +24,23 @@ All 32 MCP tools exposed by synology-office-mcp.
 
 ---
 
-## Spreadsheet (8 tools)
+## Spreadsheet (13 tools)
+
+Most spreadsheet tools accept either `file_id` or a previously registered `name` (see `spreadsheet_register`).
 
 | Tool | Confirm | Summary |
 |---|---|---|
 | `spreadsheet_list` | no | List `.osheet` files in Drive with pagination |
+| `spreadsheet_register` | no | Register a spreadsheet by alphanumeric ID (from URL `/oo/r/{id}`) under a display name for reuse in other tools |
 | `spreadsheet_get_info` | no | Get spreadsheet metadata: sheet names, row/column counts, last modified |
 | `spreadsheet_read_sheet` | no | Read cell values from a named sheet; supports A1 range notation |
+| `spreadsheet_get_styles` | no | Get cell styling (fonts, colors, alignment, number formats) for a range |
 | `spreadsheet_write_cells` | **yes** | Write values to a cell range; overwrites existing content |
 | `spreadsheet_append_rows` | **yes** | Append rows of values to the end of a sheet |
+| `spreadsheet_batch_update` | **yes** | Insert or delete rows/columns at a given index |
 | `spreadsheet_add_sheet` | no | Add a new sheet tab to an existing spreadsheet |
+| `spreadsheet_rename_sheet` | **yes** | Rename a sheet tab |
+| `spreadsheet_delete_sheet` | **yes** | Permanently delete a sheet tab (cannot be undone) |
 | `spreadsheet_create` | no | Create a new blank spreadsheet at a given Drive path |
 | `spreadsheet_export` | no | Export spreadsheet to XLSX or CSV; returns base64-encoded file content |
 

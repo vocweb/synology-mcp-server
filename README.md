@@ -40,7 +40,7 @@ Wraps the official [Synology Office Suite REST API](https://office-suite-api.syn
 | Module | Tools | Key Capabilities |
 |---|---|---|
 | **Drive** | 11 | List / search / get info / download / upload / create folder / move / delete / share / labels |
-| **Spreadsheet** | 8 | List files / get info / read sheet / write cells / append rows / add sheet / create / export |
+| **Spreadsheet** | 13 | List / register-by-name / get info / read sheet / get styles / write cells / append rows / batch update / add-rename-delete sheet / create / export |
 | **MailPlus** | 6 | List folders / list messages / get message / send / move / mark read-unread |
 | **Calendar** | 7 | List calendars / list events / get event / create calendar / create event / update event / delete event |
 | **MCP Layer** | — | Resources (file tree, mail folders, calendar list), prompts, stdio + SSE transports |
@@ -145,12 +145,12 @@ All configuration is via environment variables, validated by [Zod](https://zod.d
 
 ## Tool Reference
 
-Full table of all 32 tools with input schemas: [`tool-reference.md`](./tool-reference.md).
+Full table of all 37 tools with input schemas: [`tool-reference.md`](./tool-reference.md).
 
 Quick summary by module:
 
 - **Drive (11):** `drive_list_files`, `drive_search_files`, `drive_get_file_info`, `drive_download_file`, `drive_upload_file`, `drive_create_folder`, `drive_move_file`, `drive_delete_file`, `drive_get_sharing_link`, `drive_list_labels`, `drive_add_label`
-- **Spreadsheet (8):** `spreadsheet_list`, `spreadsheet_get_info`, `spreadsheet_read_sheet`, `spreadsheet_write_cells`, `spreadsheet_append_rows`, `spreadsheet_add_sheet`, `spreadsheet_create`, `spreadsheet_export`
+- **Spreadsheet (13):** `spreadsheet_list`, `spreadsheet_register`, `spreadsheet_get_info`, `spreadsheet_read_sheet`, `spreadsheet_get_styles`, `spreadsheet_write_cells`, `spreadsheet_append_rows`, `spreadsheet_batch_update`, `spreadsheet_add_sheet`, `spreadsheet_rename_sheet`, `spreadsheet_delete_sheet`, `spreadsheet_create`, `spreadsheet_export`
 - **MailPlus (6):** `mailplus_list_folders`, `mailplus_list_messages`, `mailplus_get_message`, `mailplus_send_message`, `mailplus_move_messages`, `mailplus_mark_messages`
 - **Calendar (7):** `calendar_list_calendars`, `calendar_list_events`, `calendar_get_event`, `calendar_create_calendar`, `calendar_create_event`, `calendar_update_event`, `calendar_delete_event`
 
@@ -305,7 +305,8 @@ See [`examples/smoke-test.ts`](./examples/smoke-test.ts) for a standalone runnab
 
 | Document | Purpose |
 |---|---|
-| [tool-reference.md](./tool-reference.md) | All 32 tools: name, module, confirm-required, summary |
+| [tool-reference.md](./tool-reference.md) | All 37 tools: name, module, confirm-required, summary |
+| [usage-guide.md](./usage-guide.md) | Sample prompts for invoking each tool from an MCP-aware agent |
 | [deployment-guide.md](./deployment-guide.md) | Docker, systemd unit, Synology scheduled task |
 | [integration-guide.md](./integration-guide.md) | Client wiring (Claude, Cursor, Codex, LangChain, …) |
 | [troubleshooting.md](./troubleshooting.md) | Common Synology error codes + fixes |
