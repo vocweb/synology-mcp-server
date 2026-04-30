@@ -10,6 +10,25 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ---
 
+## [0.4.5] - 2026-05-01
+
+### Added — Documentation refresh
+- New `usage-guide.md` at repo root: sample natural-language prompts for every one of the 37 MCP tools, plus composite-workflow examples and tips (absolute paths, ISO 8601, register-by-name, confirm-pattern).
+- `integration-guide.md`: added a **Remove MCP** subsection to every client section (Claude Desktop, Cursor, Continue.dev, Windsurf/Codeium, OpenAI Codex CLI, Google Antigravity, ChatGPT, BabyAGI/AutoGPT, LangChain, LlamaIndex, Generic SDK) so operators have a paired install/uninstall path.
+
+### Changed
+- Tool count corrected to **37** across `README.md` (Features matrix, Quick summary, Documentation table) and `tool-reference.md` (header + Spreadsheet section). Spreadsheet module grew from 8 → 13 tools.
+- Spreadsheet section in `tool-reference.md` now documents the five tools added during 0.4.x: `spreadsheet_register`, `spreadsheet_get_styles`, `spreadsheet_batch_update`, `spreadsheet_rename_sheet`, `spreadsheet_delete_sheet`.
+
+### Why
+Docs had drifted behind the 0.4.x spreadsheet expansion. New users following `README.md` saw a stale tool count and missed the register-by-name flow that several spreadsheet tools rely on.
+
+### Verified
+- Security scan across `src/`, `tests/`, and all root `*.md` documents: zero hard-coded credentials, private keys, or real tokens. Only placeholders (`your_password`, `192.168.1.100`) and intentional test fixtures (with redaction tests in `tests/utils/logger.test.ts`).
+- `git ls-files` confirms only `.env.example` is tracked; `.env*` remains gitignored.
+
+---
+
 ## [0.4.4] - 2026-04-30
 
 ### Added — Independent DSM back-channel for the Spreadsheet container
