@@ -10,6 +10,18 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ---
 
+## [0.4.6] - 2026-05-03
+
+### Added
+- Landing page link at the top of `README.md` (https://synology-mcp-server.smb-base.com/).
+- Quick Start now walks through deploying the official `synology/spreadsheet-api` Docker container, the DSM access/whitelist steps, and the homelab self-signed-cert workaround (`SYNO_SS_DSM_HTTPS=false` + `SYNO_SS_DSM_PORT=5000`).
+- Quick Start env block expanded to cover `SYNO_SS_*` variables (host, port, https) and back-call overrides (`SYNO_SS_DSM_*`).
+
+### Changed
+- Quick Start restructured into three numbered steps: container deploy → env vars → run server.
+
+---
+
 ## [0.4.5] - 2026-05-01
 
 ### Added — Documentation refresh

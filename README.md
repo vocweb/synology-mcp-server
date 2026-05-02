@@ -1,11 +1,12 @@
 # synology-office-mcp
 
-[![CI](https://github.com/vocweb/synology-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/vocweb/synology-mcp-server/actions/workflows/ci.yml)
 [![npm version](https://badge.fury.io/js/synology-office-mcp.svg)](https://badge.fury.io/js/synology-office-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js 22+](https://img.shields.io/badge/node-22%2B-brightgreen)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
+
+Visit [landing page](https://synology-mcp-server.smb-base.com/).
 
 > A self-hosted [Model Context Protocol](https://modelcontextprotocol.io) server that exposes **Synology Drive, Spreadsheet, MailPlus, and Calendar** as structured tools for AI agents (Claude Code, Claude Desktop, GoClaw, or any MCP-compatible client).
 
@@ -96,20 +97,69 @@ pnpm install && pnpm build
 
 ## Quick Start
 
-```bash
-# 1. Set required env vars (or copy .env.example to .env and edit)
-export SYNO_HOST=192.168.1.100
-export SYNO_USERNAME=your_user
-export SYNO_PASSWORD=your_password
+### 1. Deploy the Spreadsheet API container on your NAS
 
-# 2. Run (stdio mode — default for Claude Desktop / Claude Code)
+The Spreadsheet module talks to Synology's official [`synology/spreadsheet-api`](https://hub.docker.com/r/synology/spreadsheet-api) container — **not** to DSM directly. Skip this step only if you set `SYNO_ENABLE_SPREADSHEET=false`.
+
+In **Container Manager** (DSM 7.2+) or via SSH:
+
+```bash
+# Pull the official image
+sudo docker pull synology/spreadsheet-api:latest
+
+# Run (port 3000 is the container default; map to whatever you prefer on the host)
+sudo docker run -d \
+  --name synology-spreadsheet-api \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  synology/spreadsheet-api:latest
+```
+
+Then in DSM:
+- **Control Panel → Application Privileges → Synology Office** — make sure the DSM account you'll use has access.
+- **Control Panel → Security → Account** — whitelist the Docker bridge subnet so the container's back-call to DSM is not auto-blocked.
+
+> **Tip — homelab DSM with self-signed cert:** the container ships without DSM's CA and will fail HTTPS verification on its `/authorize` back-call. Point the back-call at DSM's HTTP port via `SYNO_SS_DSM_HTTPS=false` + `SYNO_SS_DSM_PORT=5000` (see env table below). Your MCP → DSM connection stays on HTTPS.
+
+### 2. Configure environment variables
+
+Copy `.env.example` to `.env` and edit, or export directly:
+
+```bash
+# ---- DSM connection (required) ----
+export SYNO_HOST=192.168.1.100        # NAS hostname or IP
+export SYNO_PORT=5001                  # 5000 = HTTP, 5001 = HTTPS
+export SYNO_HTTPS=true                 # Use HTTPS for MCP → DSM
+export SYNO_IGNORE_CERT=false          # true ONLY for trusted self-signed cert
+export SYNO_USERNAME=your_nas_user
+export SYNO_PASSWORD=your_nas_password
+
+# ---- Spreadsheet API container (required if Spreadsheet module enabled) ----
+export SYNO_SS_HOST=192.168.1.100      # Host running synology/spreadsheet-api
+export SYNO_SS_PORT=3000               # Container port (default 3000)
+export SYNO_SS_HTTPS=false             # Container default is plain HTTP
+
+# ---- Spreadsheet container's back-call to DSM (advanced) ----
+# Override only when the container can't TLS-verify DSM (e.g. self-signed cert).
+# All three default to the matching SYNO_* value if left unset.
+export SYNO_SS_DSM_HOST=192.168.1.100  # DSM host the container reaches
+export SYNO_SS_DSM_PORT=5000           # Use DSM HTTP port to bypass cert issues
+export SYNO_SS_DSM_HTTPS=false         # false → skip TLS verify on back-call
+```
+
+> **2FA accounts:** the Spreadsheet `/authorize` endpoint does **not** accept OTP. Create a dedicated DSM service account **without** 2FA for unattended automation. Leave `SYNO_OTP_CODE` empty.
+
+### 3. Run the MCP server
+
+```bash
+# stdio mode (default — used by Claude Desktop / Claude Code)
 node dist/index.js
 
-# 3. Or run via npx after global install
+# Or via the global CLI after `npm install -g synology-office-mcp`
 synology-mcp
 ```
 
-The server prints a startup banner and waits for MCP JSON-RPC messages on stdin/stdout.
+The server prints a startup banner and waits for MCP JSON-RPC messages on stdin/stdout. See [Configuration](#configuration) for the full env reference and [Connecting an MCP Client](#connecting-an-mcp-client) for client wiring.
 
 ---
 
