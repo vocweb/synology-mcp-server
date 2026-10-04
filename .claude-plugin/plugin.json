@@ -1,6 +1,5 @@
 {
   "name": "synology-office-mcp",
-  "version": "0.5.0",
   "description": "MCP server exposing Synology Drive, Spreadsheet, MailPlus, and Calendar as AI-agent tools",
   "author": {
     "name": "Tien",

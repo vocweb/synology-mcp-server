@@ -271,7 +271,7 @@ claude plugin install synology-office-mcp@synology-office-mcp
 ```
 
 On first enable, Claude Code prompts for `syno_host`, `syno_username`, `syno_password`,
-`syno_https`, `syno_ignore_cert`, and `log_level` — no manual JSON editing required. Only
+`syno_https`, `syno_ignore_cert`, and `log_level`, so no manual JSON editing is required. Only
 `syno_password` is marked `sensitive` in the manifest, so it's stored in the OS credential store;
 the other five values are stored in `settings.json`'s `pluginConfigs`. Re-run with values
 non-interactively via
