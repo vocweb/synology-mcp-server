@@ -1,0 +1,65 @@
+{
+  "name": "synology-office-mcp",
+  "description": "MCP server exposing Synology Drive, Spreadsheet, MailPlus, and Calendar as AI-agent tools",
+  "author": {
+    "name": "Tien",
+    "email": "chutien@gmail.com"
+  },
+  "homepage": "https://github.com/vocweb/synology-mcp-server#readme",
+  "repository": "https://github.com/vocweb/synology-mcp-server",
+  "license": "MIT",
+  "keywords": ["mcp", "synology", "drive", "calendar", "mailplus", "spreadsheet"],
+  "userConfig": {
+    "syno_host": {
+      "type": "string",
+      "title": "Synology host",
+      "description": "DSM IP address or hostname of your NAS",
+      "required": true
+    },
+    "syno_username": {
+      "type": "string",
+      "title": "DSM username",
+      "description": "DSM account used by the MCP server",
+      "required": true
+    },
+    "syno_password": {
+      "type": "string",
+      "title": "DSM password",
+      "description": "Password for the DSM account",
+      "required": true,
+      "sensitive": true
+    },
+    "syno_https": {
+      "type": "boolean",
+      "title": "Use HTTPS",
+      "description": "Connect to DSM over HTTPS",
+      "default": true
+    },
+    "syno_ignore_cert": {
+      "type": "boolean",
+      "title": "Ignore TLS certificate errors",
+      "description": "Accept self-signed DSM certificates",
+      "default": false
+    },
+    "log_level": {
+      "type": "string",
+      "title": "Log level",
+      "description": "One of debug, info, warn, error",
+      "default": "info"
+    }
+  },
+  "mcpServers": {
+    "synology-office": {
+      "command": "npx",
+      "args": ["-y", "synology-office-mcp"],
+      "env": {
+        "SYNO_HOST": "${user_config.syno_host}",
+        "SYNO_USERNAME": "${user_config.syno_username}",
+        "SYNO_PASSWORD": "${user_config.syno_password}",
+        "SYNO_HTTPS": "${user_config.syno_https}",
+        "SYNO_IGNORE_CERT": "${user_config.syno_ignore_cert}",
+        "LOG_LEVEL": "${user_config.log_level}"
+      }
+    }
+  }
+}
