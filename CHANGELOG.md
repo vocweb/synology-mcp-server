@@ -8,6 +8,12 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+### Added
+- `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` — packages the server as an
+  installable Claude Code plugin (`claude plugin install synology-office-mcp@synology-office-mcp`),
+  with `userConfig` prompts replacing manual env-var editing for `SYNO_HOST`, `SYNO_USERNAME`,
+  `SYNO_PASSWORD` (secure-store), `SYNO_HTTPS`, `SYNO_IGNORE_CERT`, `LOG_LEVEL`.
+
 ---
 
 ## [0.5.0] - 2026-05-22
