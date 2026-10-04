@@ -66,7 +66,6 @@ screenshots/*
 /.husky
 /.opencode
 /.omp
-/.claude-plugin
 /docs
 /docs/screenshots/*
 plans

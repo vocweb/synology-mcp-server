@@ -1,0 +1,17 @@
+{
+  "name": "synology-office-mcp",
+  "owner": {
+    "name": "Tien",
+    "email": "chutien@gmail.com"
+  },
+  "metadata": {
+    "description": "Self-hosted marketplace for the Synology Office MCP server plugin"
+  },
+  "plugins": [
+    {
+      "name": "synology-office-mcp",
+      "source": "./",
+      "description": "MCP server exposing Synology Drive, Spreadsheet, MailPlus, and Calendar as AI-agent tools"
+    }
+  ]
+}
